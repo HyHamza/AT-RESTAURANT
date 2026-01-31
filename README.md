@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AT RESTAURANT
 
-## Getting Started
+A complete restaurant ordering system built with Next.js and Supabase. Customers can browse menus, place orders with location tracking, and receive real-time updates. Includes admin dashboard for order management and offline PWA capabilities.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime)
+- **Database**: PostgreSQL with location services and order tracking
+- **Auth**: Supabase Auth with admin role management
+- **PWA**: Service worker, offline support, installable app
+- **Maps**: Google Maps API for location services
+- **Storage**: IndexedDB (Dexie) for offline data sync
+
+## Features
+
+- Menu browsing with categories and search
+- Shopping cart with persistent state
+- User authentication and profiles
+- Location-based ordering with GPS/manual address
+- Real-time order status updates
+- Admin dashboard for order and menu management
+- Offline functionality with data synchronization
+- PWA installation for mobile devices
+- Order history and tracking
+- Customer notifications
+
+## Architecture
+
+The application follows a client-server architecture where the Next.js frontend communicates with Supabase for data persistence and real-time updates. Location services integrate with Google Maps API for delivery tracking. Offline capabilities are handled through IndexedDB with background sync when connectivity returns.
+
+## Environment Setup
+
+Required environment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env.local` and update with your credentials.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Running Locally
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Database setup:
+1. Create a Supabase project
+2. Run the SQL schema from `schema.sql` in your Supabase SQL editor
+3. Configure environment variables
+4. The app will connect automatically
 
-To learn more about Next.js, take a look at the following resources:
+## Build & Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The application is optimized for deployment on Vercel with automatic PWA generation. Ensure environment variables are configured in your deployment platform.
 
-## Deploy on Vercel
+## Error Handling & Logging
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The application implements comprehensive error handling with user-friendly messages. Production logging excludes sensitive data and focuses on operational metrics. Offline errors are queued and retried when connectivity returns.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- Orders use custom ID format (ORD-XXXXX) for customer reference
+- Location data is optional but enhances delivery experience
+- Admin users are managed through the database `is_admin` flag
+- PWA installation prompts appear after user engagement delay
+- Offline sync handles conflicts through timestamp-based resolution
+- Google Maps API key is required for location features
