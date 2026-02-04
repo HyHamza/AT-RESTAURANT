@@ -191,33 +191,6 @@ export default function MenuPage() {
     }
   }
 
-  const loadCachedData = async () => {
-    try {
-      const hasCached = await offlineUtils.hasCachedData()
-      
-      if (!hasCached) {
-        throw new Error('No cached data available. Please connect to internet and refresh.')
-      }
-
-      const { categories: cachedCategories, menuItems: cachedMenuItems } = await offlineUtils.getCachedMenuData()
-      
-      if (cachedCategories.length === 0 || cachedMenuItems.length === 0) {
-        throw new Error('Cached data is empty. Please connect to internet and refresh.')
-      }
-
-      setCategories(cachedCategories)
-      setMenuItems(cachedMenuItems.map(item => ({
-        ...item,
-        category: cachedCategories.find(cat => cat.id === item.category_id)
-      })))
-
-    } catch (error: any) {
-      const errorMessage = logError('Cache Loading', error)
-      setError(errorMessage)
-      throw error
-    }
-  }
-
   const filteredItems = menuItems.filter(item => {
     const matchesCategory = selectedCategory === 'all' || item.category_id === selectedCategory
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -338,7 +311,7 @@ export default function MenuPage() {
 
       <div className="flex">
         {/* Main Content Area */}
-        <div className="flex-1 pr-0 md:pr-20 pb-20 md:pb-6">
+        <div className="flex-1 pr-16 pb-6">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Selected Category Title */}
             <div className="mb-6">
@@ -444,12 +417,12 @@ export default function MenuPage() {
           </div>
         </div>
 
-        {/* RIGHT Sidebar - Emoji Filters (Desktop) - Like your mobile app reference */}
-        <div className="hidden md:flex fixed right-0 top-16 h-full bg-gray-900 w-20 z-10 flex-col items-center py-6 space-y-4 overflow-y-auto">
+        {/* RIGHT Sidebar - Emoji Filters (All screen sizes) - Like your mobile app reference */}
+        <div className="fixed right-0 top-16 h-full bg-gray-900 w-16 z-10 flex flex-col items-center py-6 space-y-4 overflow-y-auto">
           {/* All Categories */}
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+            className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
               selectedCategory === 'all'
                 ? 'bg-orange-500 shadow-lg'
                 : 'bg-gray-700 hover:bg-gray-600'
@@ -472,11 +445,11 @@ export default function MenuPage() {
               if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
               if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
               if (lowerName.includes('coffee')) return '☕'
-              if (lowerName.includes('ice cream')) return '�'
-              if (lowerName.includes('soup')) return '�'
+              if (lowerName.includes('ice cream')) return '🍦'
+              if (lowerName.includes('soup')) return '🍲'
               if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
               if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
-              if (lowerName.includes('breakfast')) return '�'
+              if (lowerName.includes('breakfast')) return '🍳'
               if (lowerName.includes('snack')) return '🍿'
               return '🍴'
             }
@@ -485,7 +458,7 @@ export default function MenuPage() {
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
                   selectedCategory === category.id
                     ? 'bg-orange-500 shadow-lg'
                     : 'bg-gray-700 hover:bg-gray-600'
@@ -496,64 +469,6 @@ export default function MenuPage() {
               </button>
             )
           })}
-        </div>
-
-        {/* Mobile Category Filter - Bottom Fixed */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
-          <div className="flex space-x-3 overflow-x-auto px-4 py-3 scrollbar-hide">
-            {/* All Categories */}
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
-                selectedCategory === 'all'
-                  ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
-              }`}
-            >
-              <span className="text-2xl">🍽️</span>
-              <span className="text-xs font-medium">All</span>
-            </button>
-
-            {/* Dynamic Categories */}
-            {categories.map((category) => {
-              const getEmojiForCategory = (name: string) => {
-                const lowerName = name.toLowerCase()
-                if (lowerName.includes('pizza')) return '🍕'
-                if (lowerName.includes('burger')) return '🍔'
-                if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
-                if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
-                if (lowerName.includes('salad')) return '🥗'
-                if (lowerName.includes('pasta')) return '🍝'
-                if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
-                if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
-                if (lowerName.includes('coffee')) return '☕'
-                if (lowerName.includes('ice cream')) return '🍦'
-                if (lowerName.includes('soup')) return '🍲'
-                if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
-                if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
-                if (lowerName.includes('breakfast')) return '�'
-                if (lowerName.includes('snack')) return '�'
-                return '�'
-              }
-
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
-                    selectedCategory === category.id
-                      ? 'bg-orange-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
-                  }`}
-                >
-                  <span className="text-2xl">{getEmojiForCategory(category.name)}</span>
-                  <span className="text-xs font-medium whitespace-nowrap">
-                    {category.name.length > 6 ? category.name.substring(0, 6) + '...' : category.name}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
         </div>
       </div>
     </div>
