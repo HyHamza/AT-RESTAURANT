@@ -300,11 +300,11 @@ export default function MenuPage() {
     <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Our Menu</h1>
-              <p className="text-gray-600 mt-2">Discover our delicious offerings</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Menu</h1>
+              <p className="text-gray-600 mt-1">Discover our delicious offerings</p>
             </div>
             <div className="flex items-center space-x-2">
               {isOnline ? (
@@ -321,144 +321,248 @@ export default function MenuPage() {
             </div>
           </div>
 
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search menu items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search - Mobile optimized */}
+          <div className="mt-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                placeholder="Search menu items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Categories - Horizontal at top */}
-        <div className="mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-6 py-3 rounded-full transition-colors font-medium ${
-                  selectedCategory === 'all'
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'
-                }`}
-              >
-                All Items ({menuItems.length})
-              </button>
-              {categories.map((category) => {
-                const itemCount = menuItems.filter(item => item.category_id === category.id).length
-                return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex gap-6">
+          {/* Emoji Filter Sidebar - Professional Design */}
+          <div className="hidden lg:block">
+            <div className="sticky top-24">
+              <div className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-2xl shadow-xl p-4 w-20">
+                <div className="space-y-3">
+                  {/* All Categories */}
                   <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-6 py-3 rounded-full transition-colors font-medium ${
-                      selectedCategory === category.id
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'
+                    onClick={() => setSelectedCategory('all')}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                      selectedCategory === 'all'
+                        ? 'bg-orange-500 shadow-lg transform scale-110'
+                        : 'bg-gray-700 hover:bg-gray-600 hover:scale-105'
                     }`}
+                    title="All Items"
                   >
-                    {category.name} ({itemCount})
+                    🍽️
                   </button>
-                )
-              })}
+
+                  {/* Dynamic Categories with Emojis */}
+                  {categories.map((category) => {
+                    // Map category names to emojis
+                    const getEmojiForCategory = (name: string) => {
+                      const lowerName = name.toLowerCase()
+                      if (lowerName.includes('pizza')) return '🍕'
+                      if (lowerName.includes('burger')) return '🍔'
+                      if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+                      if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+                      if (lowerName.includes('salad')) return '🥗'
+                      if (lowerName.includes('pasta')) return '🍝'
+                      if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+                      if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+                      if (lowerName.includes('coffee')) return '☕'
+                      if (lowerName.includes('ice cream')) return '🍦'
+                      if (lowerName.includes('soup')) return '🍲'
+                      if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+                      if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+                      if (lowerName.includes('breakfast')) return '🍳'
+                      if (lowerName.includes('snack')) return '🍿'
+                      return '🍴' // Default emoji
+                    }
+
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                          selectedCategory === category.id
+                            ? 'bg-orange-500 shadow-lg transform scale-110'
+                            : 'bg-gray-700 hover:bg-gray-600 hover:scale-105'
+                        }`}
+                        title={category.name}
+                      >
+                        {getEmojiForCategory(category.name)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Menu Items - Full width */}
-        <div>
-          {filteredItems.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
-              {searchQuery && (
-                <p className="text-gray-400 text-sm mt-2">
-                  Try adjusting your search or selecting a different category.
-                </p>
-              )}
+          {/* Mobile Category Filter - Horizontal Scroll */}
+          <div className="lg:hidden mb-6 w-full">
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                {/* All Categories */}
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
+                  }`}
+                >
+                  <span className="text-2xl">🍽️</span>
+                  <span className="text-xs font-medium">All</span>
+                </button>
+
+                {/* Dynamic Categories */}
+                {categories.map((category) => {
+                  const getEmojiForCategory = (name: string) => {
+                    const lowerName = name.toLowerCase()
+                    if (lowerName.includes('pizza')) return '🍕'
+                    if (lowerName.includes('burger')) return '🍔'
+                    if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+                    if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+                    if (lowerName.includes('salad')) return '🥗'
+                    if (lowerName.includes('pasta')) return '🍝'
+                    if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+                    if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+                    if (lowerName.includes('coffee')) return '☕'
+                    if (lowerName.includes('ice cream')) return '🍦'
+                    if (lowerName.includes('soup')) return '🍲'
+                    if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+                    if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+                    if (lowerName.includes('breakfast')) return '🍳'
+                    if (lowerName.includes('snack')) return '🍿'
+                    return '🍴'
+                  }
+
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
+                        selectedCategory === category.id
+                          ? 'bg-orange-500 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
+                      }`}
+                    >
+                      <span className="text-2xl">{getEmojiForCategory(category.name)}</span>
+                      <span className="text-xs font-medium whitespace-nowrap">
+                        {category.name.length > 8 ? category.name.substring(0, 8) + '...' : category.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredItems.map((item) => {
-                const quantity = getCartItemQuantity(item.id)
-                
-                return (
-                  <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
-                    <div className="relative h-48 bg-gray-100 overflow-hidden">
-                      {item.image_url ? (
-                        <ImageWithModal
-                          src={item.image_url}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                        />
-                      ) : (
-                        <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                          <span className="text-gray-600 font-medium">No Image</span>
-                        </div>
-                      )}
-                      {item.category && (
-                        <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
-                          {item.category.name}
-                        </div>
-                      )}
-                    </div>
-                    <CardContent className="p-6">
-                      <div className="mb-4">
-                        <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-orange-500">
-                            {formatPrice(item.price)}
-                          </span>
-                        </div>
-                      </div>
+          </div>
 
-                      {quantity === 0 ? (
-                        <Button
-                          onClick={() => handleAddToCart(item)}
-                          className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add to Cart
-                        </Button>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
-                              className="rounded-lg hover:bg-red-50 hover:border-red-200"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
-                              className="rounded-lg hover:bg-green-50 hover:border-green-200"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
+          {/* Main Content Area */}
+          <div className="flex-1">
+            {/* Selected Category Title */}
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900">
+                {selectedCategory === 'all' 
+                  ? 'All Items' 
+                  : categories.find(cat => cat.id === selectedCategory)?.name || 'Menu Items'
+                }
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} available
+              </p>
+            </div>
+
+            {/* Menu Items Grid */}
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
+                {searchQuery && (
+                  <p className="text-gray-400 text-sm mt-2">
+                    Try adjusting your search or selecting a different category.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredItems.map((item) => {
+                  const quantity = getCartItemQuantity(item.id)
+                  
+                  return (
+                    <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
+                      <div className="relative h-48 bg-gray-100 overflow-hidden">
+                        {item.image_url ? (
+                          <ImageWithModal
+                            src={item.image_url}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          />
+                        ) : (
+                          <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <span className="text-gray-600 font-medium">No Image</span>
                           </div>
-                          <span className="text-sm text-gray-600 font-medium">
-                            {formatPrice(item.price * quantity)}
-                          </span>
+                        )}
+                        {item.category && (
+                          <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
+                            {item.category.name}
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-6">
+                        <div className="mb-4">
+                          <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-bold text-orange-500">
+                              {formatPrice(item.price)}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
+
+                        {quantity === 0 ? (
+                          <Button
+                            onClick={() => handleAddToCart(item)}
+                            className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add to Cart
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
+                                className="rounded-lg hover:bg-red-50 hover:border-red-200"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
+                                className="rounded-lg hover:bg-green-50 hover:border-green-200"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {formatPrice(item.price * quantity)}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
