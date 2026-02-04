@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
+    emoji TEXT, -- Emoji for category display
     image_url TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -376,11 +377,11 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 -- ============================================================================
 
 -- Insert sample categories
-INSERT INTO public.categories (name, description, sort_order) VALUES
-('Appetizers', 'Start your meal with our delicious appetizers', 1),
-('Main Courses', 'Our signature main dishes', 2),
-('Desserts', 'Sweet endings to your meal', 3),
-('Beverages', 'Refreshing drinks', 4)
+INSERT INTO public.categories (name, description, emoji, sort_order) VALUES
+('Appetizers', 'Start your meal with our delicious appetizers', '🥗', 1),
+('Main Courses', 'Our signature main dishes', '🍽️', 2),
+('Desserts', 'Sweet endings to your meal', '🍰', 3),
+('Beverages', 'Refreshing drinks', '🥤', 4)
 ON CONFLICT DO NOTHING;
 
 -- Insert sample menu items

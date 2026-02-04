@@ -279,19 +279,7 @@ export default function MenuPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Menu</h1>
               <p className="text-gray-600 mt-1">Discover our delicious offerings</p>
             </div>
-            <div className="flex items-center space-x-2">
-              {isOnline ? (
-                <div className="flex items-center text-green-600">
-                  <Wifi className="h-4 w-4 mr-1" />
-                  <span className="text-sm">Connected</span>
-                </div>
-              ) : (
-                <div className="flex items-center text-orange-600">
-                  <WifiOff className="h-4 w-4 mr-1" />
-                  <span className="text-sm">Connection unavailable</span>
-                </div>
-              )}
-            </div>
+           
           </div>
           
           {/* Search - Mobile optimized */}
@@ -436,8 +424,12 @@ export default function MenuPage() {
 
             {/* Dynamic Categories with Emojis */}
             {categories.map((category) => {
-              const getEmojiForCategory = (name: string) => {
-                const lowerName = name.toLowerCase()
+              const getEmojiForCategory = (category: Category) => {
+                // First, check if category has an emoji field from database
+                if (category.emoji) return category.emoji
+                
+                // Otherwise, use smart mapping based on name
+                const lowerName = category.name.toLowerCase()
                 if (lowerName.includes('pizza')) return '🍕'
                 if (lowerName.includes('burger')) return '�'
                 if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
@@ -467,7 +459,7 @@ export default function MenuPage() {
                   }`}
                   title={category.name}
                 >
-                  {getEmojiForCategory(category.name)}
+                  {getEmojiForCategory(category)}
                 </button>
               )
             })}
