@@ -311,7 +311,7 @@ export default function MenuPage() {
 
       <div className="flex">
         {/* Main Content Area */}
-        <div className="flex-1 pr-16 pb-6">
+        <div className="flex-1 pr-12 sm:pr-16 pb-6">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Selected Category Title */}
             <div className="mb-6">
@@ -417,58 +417,67 @@ export default function MenuPage() {
           </div>
         </div>
 
-        {/* RIGHT Sidebar - Emoji Filters (All screen sizes) - Like your mobile app reference */}
-        <div className="fixed right-0 top-16 h-full bg-gray-900 w-16 z-10 flex flex-col items-center py-6 space-y-4 overflow-y-auto">
-          {/* All Categories */}
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
-              selectedCategory === 'all'
-                ? 'bg-orange-500 shadow-lg'
-                : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-            title="All Items"
-          >
-            🍽️
-          </button>
+        {/* RIGHT Sidebar - Emoji Filters (All screen sizes) - Responsive with scrolling */}
+        <div className="fixed right-0 top-16 h-full bg-gray-900 w-12 sm:w-16 z-10 flex flex-col items-center py-4 sm:py-6 overflow-y-auto sidebar-scroll">
+          {/* Scrollable container for filters */}
+          <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
+            {/* All Categories */}
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+                selectedCategory === 'all'
+                  ? 'bg-orange-500 shadow-lg'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+              title="All Items"
+            >
+              🍽️
+            </button>
 
-          {/* Dynamic Categories with Emojis */}
-          {categories.map((category) => {
-            const getEmojiForCategory = (name: string) => {
-              const lowerName = name.toLowerCase()
-              if (lowerName.includes('pizza')) return '🍕'
-              if (lowerName.includes('burger')) return '🍔'
-              if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
-              if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
-              if (lowerName.includes('salad')) return '🥗'
-              if (lowerName.includes('pasta')) return '🍝'
-              if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
-              if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
-              if (lowerName.includes('coffee')) return '☕'
-              if (lowerName.includes('ice cream')) return '🍦'
-              if (lowerName.includes('soup')) return '🍲'
-              if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
-              if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
-              if (lowerName.includes('breakfast')) return '🍳'
-              if (lowerName.includes('snack')) return '🍿'
-              return '🍴'
-            }
+            {/* Dynamic Categories with Emojis */}
+            {categories.map((category) => {
+              const getEmojiForCategory = (name: string) => {
+                const lowerName = name.toLowerCase()
+                if (lowerName.includes('pizza')) return '🍕'
+                if (lowerName.includes('burger')) return '�'
+                if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+                if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+                if (lowerName.includes('salad')) return '🥗'
+                if (lowerName.includes('pasta')) return '🍝'
+                if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+                if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+                if (lowerName.includes('coffee')) return '☕'
+                if (lowerName.includes('ice cream')) return '🍦'
+                if (lowerName.includes('soup')) return '🍲'
+                if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+                if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+                if (lowerName.includes('breakfast')) return '🍳'
+                if (lowerName.includes('snack')) return '🍿'
+                return '🍴'
+              }
 
-            return (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
-                  selectedCategory === category.id
-                    ? 'bg-orange-500 shadow-lg'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-                title={category.name}
-              >
-                {getEmojiForCategory(category.name)}
-              </button>
-            )
-          })}
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+                    selectedCategory === category.id
+                      ? 'bg-orange-500 shadow-lg'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title={category.name}
+                >
+                  {getEmojiForCategory(category.name)}
+                </button>
+              )
+            })}
+          </div>
+          
+          {/* Scroll indicator for mobile */}
+          <div className="sm:hidden mt-2 flex flex-col items-center space-y-1">
+            <div className="w-1 h-8 bg-gray-600 rounded-full opacity-50"></div>
+            <div className="text-gray-400 text-xs rotate-90 whitespace-nowrap">Scroll</div>
+          </div>
         </div>
       </div>
     </div>
