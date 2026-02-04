@@ -24,6 +24,7 @@ interface Category {
   id: string
   name: string
   description: string | null
+  emoji: string | null
   is_active: boolean
   created_at: string
 }
@@ -64,6 +65,7 @@ export default function AdminMenuPage() {
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     description: '',
+    emoji: '',
     is_active: true
   })
 
@@ -249,6 +251,7 @@ export default function AdminMenuPage() {
         .insert({
           name: categoryForm.name,
           description: categoryForm.description || null,
+          emoji: categoryForm.emoji || null,
           is_active: categoryForm.is_active
         })
 
@@ -258,6 +261,7 @@ export default function AdminMenuPage() {
       setCategoryForm({
         name: '',
         description: '',
+        emoji: '',
         is_active: true
       })
       await loadData()
@@ -279,6 +283,7 @@ export default function AdminMenuPage() {
         .update({
           name: categoryForm.name,
           description: categoryForm.description || null,
+          emoji: categoryForm.emoji || null,
           is_active: categoryForm.is_active
         })
         .eq('id', editingCategory.id)
@@ -398,6 +403,7 @@ export default function AdminMenuPage() {
     setCategoryForm({
       name: category.name,
       description: category.description || '',
+      emoji: category.emoji || '',
       is_active: category.is_active
     })
   }
@@ -464,6 +470,18 @@ export default function AdminMenuPage() {
                       onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="Description (optional)"
                     />
+                    <div className="flex space-x-2">
+                      <Input
+                        value={categoryForm.emoji}
+                        onChange={(e) => setCategoryForm(prev => ({ ...prev, emoji: e.target.value }))}
+                        placeholder="Emoji (e.g., 🍕)"
+                        className="w-20 text-center text-lg"
+                        maxLength={2}
+                      />
+                      <div className="flex-1 text-xs text-gray-500 flex items-center">
+                        Add an emoji to represent this category in filters
+                      </div>
+                    </div>
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -487,7 +505,12 @@ export default function AdminMenuPage() {
                 ) : (
                   <div>
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold">{category.name}</h3>
+                      <div className="flex items-center space-x-2">
+                        {category.emoji && (
+                          <span className="text-2xl">{category.emoji}</span>
+                        )}
+                        <h3 className="font-semibold">{category.name}</h3>
+                      </div>
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         category.is_active 
                           ? 'bg-green-100 text-green-700' 
@@ -902,6 +925,24 @@ export default function AdminMenuPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     rows={3}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Emoji
+                  </label>
+                  <div className="flex space-x-3">
+                    <Input
+                      value={categoryForm.emoji}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, emoji: e.target.value }))}
+                      placeholder="🍕"
+                      className="w-20 text-center text-2xl"
+                      maxLength={2}
+                    />
+                    <div className="flex-1 text-sm text-gray-500 flex items-center">
+                      Add an emoji to represent this category in the menu filters (e.g., 🍕 for Pizza, 🍔 for Burgers)
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-2">

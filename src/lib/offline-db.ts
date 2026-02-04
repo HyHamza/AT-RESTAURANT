@@ -28,6 +28,7 @@ export interface OfflineCategory {
   id: string
   name: string
   description: string | null
+  emoji: string | null
   image_url: string | null
   sort_order: number
   is_active: boolean
