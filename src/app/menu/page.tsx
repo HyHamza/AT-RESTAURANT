@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { ImageWithModal } from '@/components/ui/image-modal'
 import { useCart } from '@/contexts/cart-context'
 import { formatPrice } from '@/lib/utils'
 import { offlineUtils } from '@/lib/offline-db'
@@ -296,7 +297,7 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -386,28 +387,34 @@ export default function MenuPage() {
                 const quantity = getCartItemQuantity(item.id)
                 
                 return (
-                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="h-48 bg-gray-200 flex items-center justify-center">
+                  <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
+                    <div className="relative h-48 bg-gray-100 overflow-hidden">
                       {item.image_url ? (
-                        <img
+                        <ImageWithModal
                           src={item.image_url}
                           alt={item.name}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                         />
                       ) : (
-                        <span className="text-gray-500">No Image</span>
+                        <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                          <span className="text-gray-600 font-medium">No Image</span>
+                        </div>
+                      )}
+                      {item.category && (
+                        <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
+                          {item.category.name}
+                        </div>
                       )}
                     </div>
                     <CardContent className="p-6">
                       <div className="mb-4">
-                        <h3 className="text-xl font-semibold mb-2">{item.name}</h3>
-                        <p className="text-gray-600 text-sm mb-3">{item.description}</p>
+                        <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-2xl font-bold text-orange-500">
                             {formatPrice(item.price)}
-                          </span>
-                          <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {item.category?.name}
                           </span>
                         </div>
                       </div>
@@ -415,8 +422,9 @@ export default function MenuPage() {
                       {quantity === 0 ? (
                         <Button
                           onClick={() => handleAddToCart(item)}
-                          className="w-full bg-orange-500 hover:bg-orange-600"
+                          className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
                         >
+                          <Plus className="h-4 w-4 mr-2" />
                           Add to Cart
                         </Button>
                       ) : (
@@ -426,19 +434,21 @@ export default function MenuPage() {
                               size="icon"
                               variant="outline"
                               onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
+                              className="rounded-lg hover:bg-red-50 hover:border-red-200"
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
-                            <span className="font-semibold text-lg">{quantity}</span>
+                            <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
                             <Button
                               size="icon"
                               variant="outline"
                               onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
+                              className="rounded-lg hover:bg-green-50 hover:border-green-200"
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 font-medium">
                             {formatPrice(item.price * quantity)}
                           </span>
                         </div>

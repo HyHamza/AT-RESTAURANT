@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function SettingsSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center space-x-3 mb-8">
           <Skeleton className="h-8 w-8" />
@@ -154,52 +154,52 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center space-x-3 mb-8">
-          <SettingsIcon className="h-8 w-8 text-gray-700" />
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+    <div className="min-h-screen bg-gray-50 pt-16">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex items-center space-x-3 mb-6 sm:mb-8">
+          <SettingsIcon className="h-7 w-7 sm:h-8 sm:w-8 text-gray-700" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* App Status */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
                 <Smartphone className="h-5 w-5" />
                 <span>App Status</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <span className="font-medium">Network Status</span>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <span className="font-medium text-sm sm:text-base">Network Status</span>
                 <div className="flex items-center space-x-2">
                   {isOnline ? (
                     <>
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-green-600">Online</span>
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="text-green-600 text-sm sm:text-base">Online</span>
                     </>
                   ) : (
                     <>
-                      <AlertTriangle className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">Connection unavailable</span>
+                      <AlertTriangle className="h-5 w-5 text-gray-500" />
+                      <span className="text-gray-600 text-sm">Connection unavailable</span>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <span className="font-medium">Pending Orders</span>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <span className="font-medium text-sm sm:text-base">Pending Orders</span>
                 <div className="flex items-center space-x-2">
                   {pendingOrders > 0 ? (
                     <>
-                      <AlertTriangle className="h-4 w-4 text-orange-500" />
-                      <span className="text-orange-600">{pendingOrders}</span>
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                      <span className="text-orange-600 text-sm sm:text-base">{pendingOrders}</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-green-600">0</span>
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="text-green-600 text-sm sm:text-base">0</span>
                     </>
                   )}
                 </div>
@@ -209,12 +209,12 @@ export default function SettingsPage() {
                 <Button
                   onClick={handleForcSync}
                   disabled={syncing}
-                  className="w-full"
+                  className="w-full h-12 text-base"
                 >
                   {syncing ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-5 w-5 mr-2" />
                   )}
                   Synchronize Pending Orders
                 </Button>
@@ -228,13 +228,14 @@ export default function SettingsPage() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Database className="h-5 w-5" />
-                  <span>Offline Data</span>
+                  <span className="text-lg">Offline Data</span>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleRefreshStats}
                   disabled={refreshing}
+                  className="h-10 px-3"
                 >
                   {refreshing ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -248,35 +249,35 @@ export default function SettingsPage() {
               {cacheStats ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{cacheStats.categories}</div>
-                      <div className="text-sm text-gray-600">Categories</div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-blue-600">{cacheStats.categories}</div>
+                      <div className="text-xs sm:text-sm text-gray-600">Categories</div>
                     </div>
                     
-                    <div className="text-center p-3 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{cacheStats.menuItems}</div>
-                      <div className="text-sm text-gray-600">Menu Items</div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-green-600">{cacheStats.menuItems}</div>
+                      <div className="text-xs sm:text-sm text-gray-600">Menu Items</div>
                     </div>
                     
-                    <div className="text-center p-3 border rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">{cacheStats.pendingOrders}</div>
-                      <div className="text-sm text-gray-600">Pending Orders</div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-orange-600">{cacheStats.pendingOrders}</div>
+                      <div className="text-xs sm:text-sm text-gray-600">Pending Orders</div>
                     </div>
                     
-                    <div className="text-center p-3 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{cacheStats.cachedAssets}</div>
-                      <div className="text-sm text-gray-600">Cached Assets</div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-xl sm:text-2xl font-bold text-purple-600">{cacheStats.cachedAssets}</div>
+                      <div className="text-xs sm:text-sm text-gray-600">Cached Assets</div>
                     </div>
                   </div>
 
                   {cacheStats.lastCacheUpdate && (
-                    <div className="text-sm text-gray-600 text-center">
+                    <div className="text-xs sm:text-sm text-gray-600 text-center">
                       Last updated: {new Date(cacheStats.lastCacheUpdate).toLocaleString()}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-center text-gray-500">
+                <div className="text-center text-gray-500 py-8">
                   Loading cache statistics...
                 </div>
               )}
@@ -285,17 +286,17 @@ export default function SettingsPage() {
         </div>
 
         {/* Offline Information */}
-        <Card className="mt-8">
+        <Card className="mt-6 sm:mt-8">
           <CardHeader>
-            <CardTitle>Offline Functionality</CardTitle>
+            <CardTitle className="text-lg">Offline Functionality</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-start space-x-3">
-                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-medium text-green-900">Enhanced Offline Experience</h4>
-                  <p className="text-sm text-green-700 mt-1">
+                  <h4 className="font-medium text-green-900 mb-2">Enhanced Offline Experience</h4>
+                  <p className="text-sm text-green-700">
                     Orders can be placed when internet connection is unavailable. All functionality 
                     remains accessible, and orders will automatically sync when connection is restored.
                   </p>
@@ -305,8 +306,8 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <h3 className="font-semibold">Available Without Connection</h3>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h3 className="font-semibold text-base">Available Without Connection</h3>
+                <ul className="text-sm text-gray-600 space-y-2">
                   <li>• Browse menu and view items</li>
                   <li>• Place orders and manage cart</li>
                   <li>• Access order history</li>
@@ -315,8 +316,8 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold">Automatic Synchronization</h3>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <h3 className="font-semibold text-base">Automatic Synchronization</h3>
+                <ul className="text-sm text-gray-600 space-y-2">
                   <li>• Orders sync when connection restored</li>
                   <li>• Menu data updates automatically</li>
                   <li>• No data loss occurs</li>
@@ -327,12 +328,12 @@ export default function SettingsPage() {
 
             {/* Data Management */}
             <div className="border-t pt-6">
-              <h3 className="font-semibold mb-4 text-red-600">Data Management</h3>
+              <h3 className="font-semibold mb-4 text-red-600 text-base">Data Management</h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                  <div>
-                    <h4 className="font-medium text-red-800">Clear Application Data</h4>
-                    <p className="text-sm text-red-600 mt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-red-200 rounded-lg bg-red-50 space-y-3 sm:space-y-0">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-red-800 mb-1">Clear Application Data</h4>
+                    <p className="text-sm text-red-600">
                       Permanently removes all cached data and pending orders. Use only if experiencing technical issues.
                     </p>
                   </div>
@@ -340,17 +341,18 @@ export default function SettingsPage() {
                     variant="destructive"
                     onClick={handleClearData}
                     disabled={clearing}
+                    className="w-full sm:w-auto h-12 text-base sm:ml-4"
                   >
                     {clearing ? (
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-5 w-5 mr-2" />
                     )}
                     Clear Data
                   </Button>
                 </div>
 
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 p-4 bg-gray-50 rounded-lg">
                   <strong>Important:</strong> Clearing application data will remove all cached menu items, 
                   pending orders, and stored assets. Ensure all orders have been synchronized before proceeding.
                 </div>
