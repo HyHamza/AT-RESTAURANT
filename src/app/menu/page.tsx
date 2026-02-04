@@ -338,7 +338,7 @@ export default function MenuPage() {
 
       <div className="flex">
         {/* Main Content Area */}
-        <div className="flex-1 pr-0 lg:pr-20 pb-20 lg:pb-6">
+        <div className="flex-1 pr-0 md:pr-20 pb-20 md:pb-6">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Selected Category Title */}
             <div className="mb-6">
@@ -445,7 +445,7 @@ export default function MenuPage() {
         </div>
 
         {/* RIGHT Sidebar - Emoji Filters (Desktop) - Like your mobile app reference */}
-        <div className="hidden lg:flex fixed right-0 top-16 h-full bg-gray-900 w-20 z-10 flex-col items-center py-6 space-y-4 overflow-y-auto">
+        <div className="hidden md:flex fixed right-0 top-16 h-full bg-gray-900 w-20 z-10 flex-col items-center py-6 space-y-4 overflow-y-auto">
           {/* All Categories */}
           <button
             onClick={() => setSelectedCategory('all')}
@@ -499,7 +499,7 @@ export default function MenuPage() {
         </div>
 
         {/* Mobile Category Filter - Bottom Fixed */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
           <div className="flex space-x-3 overflow-x-auto px-4 py-3 scrollbar-hide">
             {/* All Categories */}
             <button
