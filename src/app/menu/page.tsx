@@ -336,131 +336,123 @@ export default function MenuPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
-          {/* Emoji Filter Sidebar - Professional Design */}
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
-              <div className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-2xl shadow-xl p-4 w-20">
-                <div className="space-y-3">
-                  {/* All Categories */}
-                  <button
-                    onClick={() => setSelectedCategory('all')}
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
-                      selectedCategory === 'all'
-                        ? 'bg-orange-500 shadow-lg transform scale-110'
-                        : 'bg-gray-700 hover:bg-gray-600 hover:scale-105'
-                    }`}
-                    title="All Items"
-                  >
-                    🍽️
-                  </button>
+      <div className="flex">
+        {/* Left Sidebar - Emoji Filters (Desktop only, like the mobile app design) */}
+        <div className="hidden md:flex fixed left-0 top-16 h-full bg-gray-900 w-16 z-10 flex-col items-center py-6 space-y-4 overflow-y-auto">
+          {/* All Categories */}
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+              selectedCategory === 'all'
+                ? 'bg-orange-500 shadow-lg'
+                : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title="All Items"
+          >
+            🍽️
+          </button>
 
-                  {/* Dynamic Categories with Emojis */}
-                  {categories.map((category) => {
-                    // Map category names to emojis
-                    const getEmojiForCategory = (name: string) => {
-                      const lowerName = name.toLowerCase()
-                      if (lowerName.includes('pizza')) return '🍕'
-                      if (lowerName.includes('burger')) return '🍔'
-                      if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
-                      if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
-                      if (lowerName.includes('salad')) return '🥗'
-                      if (lowerName.includes('pasta')) return '🍝'
-                      if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
-                      if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
-                      if (lowerName.includes('coffee')) return '☕'
-                      if (lowerName.includes('ice cream')) return '🍦'
-                      if (lowerName.includes('soup')) return '🍲'
-                      if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
-                      if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
-                      if (lowerName.includes('breakfast')) return '🍳'
-                      if (lowerName.includes('snack')) return '🍿'
-                      return '🍴' // Default emoji
-                    }
+          {/* Dynamic Categories with Emojis */}
+          {categories.map((category) => {
+            // Map category names to emojis
+            const getEmojiForCategory = (name: string) => {
+              const lowerName = name.toLowerCase()
+              if (lowerName.includes('pizza')) return '🍕'
+              if (lowerName.includes('burger')) return '🍔'
+              if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+              if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+              if (lowerName.includes('salad')) return '🥗'
+              if (lowerName.includes('pasta')) return '🍝'
+              if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+              if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+              if (lowerName.includes('coffee')) return '☕'
+              if (lowerName.includes('ice cream')) return '🍦'
+              if (lowerName.includes('soup')) return '🍲'
+              if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+              if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+              if (lowerName.includes('breakfast')) return '🍳'
+              if (lowerName.includes('snack')) return '🍿'
+              return '🍴' // Default emoji
+            }
 
-                    return (
-                      <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.id)}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
-                          selectedCategory === category.id
-                            ? 'bg-orange-500 shadow-lg transform scale-110'
-                            : 'bg-gray-700 hover:bg-gray-600 hover:scale-105'
-                        }`}
-                        title={category.name}
-                      >
-                        {getEmojiForCategory(category.name)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
+            return (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                  selectedCategory === category.id
+                    ? 'bg-orange-500 shadow-lg'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+                title={category.name}
+              >
+                {getEmojiForCategory(category.name)}
+              </button>
+            )
+          })}
+        </div>
 
-          {/* Mobile Category Filter - Horizontal Scroll */}
-          <div className="lg:hidden mb-6 w-full">
-            <div className="bg-white rounded-xl shadow-sm p-4">
-              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-                {/* All Categories */}
+        {/* Mobile Category Filter - Bottom Fixed */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+          <div className="flex space-x-2 overflow-x-auto px-4 py-3 scrollbar-hide">
+            {/* All Categories */}
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`flex-shrink-0 flex flex-col items-center space-y-1 p-2 rounded-lg transition-all ${
+                selectedCategory === 'all'
+                  ? 'bg-orange-500 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
+              }`}
+            >
+              <span className="text-xl">🍽️</span>
+              <span className="text-xs font-medium">All</span>
+            </button>
+
+            {/* Dynamic Categories */}
+            {categories.map((category) => {
+              const getEmojiForCategory = (name: string) => {
+                const lowerName = name.toLowerCase()
+                if (lowerName.includes('pizza')) return '🍕'
+                if (lowerName.includes('burger')) return '🍔'
+                if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+                if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+                if (lowerName.includes('salad')) return '🥗'
+                if (lowerName.includes('pasta')) return '🍝'
+                if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+                if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+                if (lowerName.includes('coffee')) return '☕'
+                if (lowerName.includes('ice cream')) return '🍦'
+                if (lowerName.includes('soup')) return '🍲'
+                if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+                if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+                if (lowerName.includes('breakfast')) return '🍳'
+                if (lowerName.includes('snack')) return '🍿'
+                return '🍴'
+              }
+
+              return (
                 <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
-                    selectedCategory === 'all'
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex-shrink-0 flex flex-col items-center space-y-1 p-2 rounded-lg transition-all ${
+                    selectedCategory === category.id
                       ? 'bg-orange-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
                   }`}
                 >
-                  <span className="text-2xl">🍽️</span>
-                  <span className="text-xs font-medium">All</span>
+                  <span className="text-xl">{getEmojiForCategory(category.name)}</span>
+                  <span className="text-xs font-medium whitespace-nowrap">
+                    {category.name.length > 6 ? category.name.substring(0, 6) + '...' : category.name}
+                  </span>
                 </button>
-
-                {/* Dynamic Categories */}
-                {categories.map((category) => {
-                  const getEmojiForCategory = (name: string) => {
-                    const lowerName = name.toLowerCase()
-                    if (lowerName.includes('pizza')) return '🍕'
-                    if (lowerName.includes('burger')) return '🍔'
-                    if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
-                    if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
-                    if (lowerName.includes('salad')) return '🥗'
-                    if (lowerName.includes('pasta')) return '🍝'
-                    if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
-                    if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
-                    if (lowerName.includes('coffee')) return '☕'
-                    if (lowerName.includes('ice cream')) return '🍦'
-                    if (lowerName.includes('soup')) return '🍲'
-                    if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
-                    if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
-                    if (lowerName.includes('breakfast')) return '🍳'
-                    if (lowerName.includes('snack')) return '🍿'
-                    return '🍴'
-                  }
-
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`flex-shrink-0 flex flex-col items-center space-y-1 p-3 rounded-xl transition-all ${
-                        selectedCategory === category.id
-                          ? 'bg-orange-500 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-orange-100'
-                      }`}
-                    >
-                      <span className="text-2xl">{getEmojiForCategory(category.name)}</span>
-                      <span className="text-xs font-medium whitespace-nowrap">
-                        {category.name.length > 8 ? category.name.substring(0, 8) + '...' : category.name}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+              )
+            })}
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1">
+        {/* Main Content Area - with left margin for sidebar on desktop and bottom padding for mobile */}
+        <div className="flex-1 md:ml-16 pb-20 md:pb-6">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Selected Category Title */}
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-900">
@@ -485,7 +477,7 @@ export default function MenuPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredItems.map((item) => {
                   const quantity = getCartItemQuantity(item.id)
                   
@@ -498,7 +490,7 @@ export default function MenuPage() {
                             alt={item.name}
                             fill
                             className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                         ) : (
                           <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
