@@ -6,38 +6,38 @@ import { Button } from '@/components/ui/button'
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <Link href="/" className="w-full sm:w-auto">
+              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 w-full sm:w-auto h-12 text-base">
+                <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Home
               </Button>
             </Link>
             <div className="flex items-center space-x-2">
               <Shield className="h-5 w-5 text-orange-500" />
-              <h1 className="text-2xl font-bold text-gray-900">Privacy Policy</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Privacy Policy</h1>
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm border p-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8">
           {/* Last Updated */}
-          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-8">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-6 sm:mb-8">
             <Eye className="h-4 w-4" />
             <span>Last updated: January 31, 2026</span>
           </div>
 
           {/* Introduction */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Privacy Matters</h2>
-            <p className="text-gray-700 leading-relaxed">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Your Privacy Matters</h2>
+            <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
               At AT RESTAURANT, we are committed to protecting your privacy and ensuring the security 
               of your personal information. This Privacy Policy explains how we collect, use, and 
               safeguard your data when you use our services.
@@ -45,18 +45,18 @@ export default function PrivacyPolicy() {
           </div>
 
           {/* Sections */}
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Information We Collect */}
             <section>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center mr-2">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
                   <span className="text-orange-600 text-sm font-bold">1</span>
                 </div>
                 Information We Collect
               </h3>
               <div className="text-gray-700 space-y-4 ml-8">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Personal Information</h4>
+                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Personal Information</h4>
                   <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
                     <li>Name, email address, and phone number</li>
                     <li>Delivery addresses and location data</li>
@@ -65,7 +65,7 @@ export default function PrivacyPolicy() {
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Usage Information</h4>
+                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Usage Information</h4>
                   <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
                     <li>Order history and preferences</li>
                     <li>Website and app usage patterns</li>
@@ -258,12 +258,12 @@ export default function PrivacyPolicy() {
           </div>
 
           {/* Contact Information */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <div className="bg-orange-50 rounded-lg p-6">
+          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200">
+            <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
               <div className="flex items-start space-x-3">
-                <Mail className="h-5 w-5 text-orange-600 mt-0.5" />
+                <Mail className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Privacy Questions or Concerns?</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Privacy Questions or Concerns?</h4>
                   <p className="text-gray-700 text-sm mb-3">
                     If you have any questions about this Privacy Policy or how we handle your data, 
                     please contact us:

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { ImageWithModal } from '@/components/ui/image-modal'
 import { useCart } from '@/contexts/cart-context'
 import { formatPrice, generateOrderId } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -18,7 +19,10 @@ import {
   Trash2, 
   ShoppingCart, 
   User,
-  Lock 
+  Lock,
+  MapPin,
+  CreditCard,
+  CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -414,13 +418,15 @@ function OrderContent() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <ShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your cart is empty</h2>
-          <p className="text-gray-600 mb-6">Add some delicious items from our menu to get started.</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 pt-16">
+        <div className="text-center max-w-lg mx-auto">
+          <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
+            <ShoppingCart className="h-12 w-12 text-orange-500" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+          <p className="text-gray-600 mb-8 text-lg leading-relaxed">Add some delicious items from our menu to get started with your order.</p>
           <Link href="/menu">
-            <Button className="bg-orange-500 hover:bg-orange-600">
+            <Button className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
               Browse Menu
             </Button>
           </Link>
@@ -430,116 +436,163 @@ function OrderContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Order</h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Cart Items */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Items</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg">
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <span className="text-gray-500 text-xs">No Image</span>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{item.name}</h3>
-                        <p className="text-gray-600">{formatPrice(item.price)} each</p>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="font-semibold">{formatPrice(item.price * item.quantity)}</p>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeItem(item.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex justify-between items-center text-lg font-semibold">
-                    <span>Total:</span>
-                    <span className="text-orange-500">{formatPrice(total)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-16">
+      {/* Professional header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Complete Your Order</h1>
+            <p className="text-gray-600 text-lg">Review your items and provide delivery details</p>
           </div>
+        </div>
+      </div>
 
-          {/* Customer Information */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {authStep === 'authenticated' ? 'Customer Information' : 'Account Required'}
-                </CardTitle>
-                {user && (
-                  <p className="text-sm text-green-600">✓ Signed in as {user.email}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                {authStep === 'check' && (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    <span className="ml-3 text-gray-600">Checking authentication...</span>
-                  </div>
-                )}
-
-                {authStep === 'login' && (
-                  <div className="space-y-4">
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                      <div className="flex items-start space-x-3">
-                        <Lock className="h-5 w-5 text-orange-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-orange-900">Account Required</h4>
-                          <p className="text-sm text-orange-700 mt-1">
-                            You must be logged in to place an order. Sign in to your existing account or create a new one.
-                          </p>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column - Order Summary */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Order Summary - Professional Design */}
+          <Card className="shadow-lg border-0 bg-white">
+            <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                    <ShoppingCart className="h-5 w-5 mr-2 text-orange-500" />
+                    Order Summary
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">{items.length} item{items.length !== 1 ? 's' : ''} in your cart</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-orange-600">{formatPrice(total)}</p>
+                  <p className="text-sm text-gray-500">Total Amount</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:shadow-md transition-all">
+                    <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                      {item.image_url ? (
+                        <ImageWithModal
+                          src={item.image_url}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center">
+                          <span className="text-gray-600 text-xs font-medium">No Image</span>
                         </div>
-                      </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate text-base">{item.name}</h3>
+                      <p className="text-gray-600 text-sm">{formatPrice(item.price)} each</p>
                     </div>
 
+                    <div className="flex items-center space-x-3 bg-white rounded-lg border border-gray-200 p-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="h-8 w-8 rounded-md hover:bg-gray-100"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-semibold text-sm">{item.quantity}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="h-8 w-8 rounded-md hover:bg-gray-100"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="text-right flex-shrink-0 min-w-0">
+                      <p className="font-bold text-gray-900 text-base">{formatPrice(item.price * item.quantity)}</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeItem(item.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 h-auto mt-1 rounded-md"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-100">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <span className="text-lg font-semibold text-gray-900">Total Amount</span>
+                      <p className="text-sm text-gray-600">Including all items</p>
+                    </div>
+                    <span className="text-3xl font-bold text-orange-600">{formatPrice(total)}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Customer Information */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Customer Information - Professional Design */}
+          <Card className="shadow-lg border-0 bg-white sticky top-24">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+              <CardTitle className="flex items-center text-lg font-bold text-gray-900">
+                {authStep === 'authenticated' ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                    <span>Delivery Information</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5 mr-2 text-orange-500" />
+                    <span>Account Required</span>
+                  </>
+                )}
+              </CardTitle>
+              {user && (
+                <p className="text-sm text-green-600 flex items-center mt-2">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Signed in as {user.email}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="p-6">
+              {authStep === 'check' && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                  <span className="ml-3 text-gray-600">Checking authentication...</span>
+                </div>
+              )}
+
+              {authStep === 'login' && (
+                <div className="space-y-6">
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                    <div className="flex items-start space-x-3">
+                      <Lock className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-orange-900">Account Required</h4>
+                        <p className="text-sm text-orange-700 mt-1">
+                          Sign in to your account or create a new one to place your order.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -547,12 +600,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Password *
                       </label>
                       <Input
@@ -560,13 +614,14 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Enter your password"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     {authError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-red-800 text-sm">{authError}</p>
+                      <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                        <p className="text-red-800 text-sm font-medium">{authError}</p>
                       </div>
                     )}
 
@@ -574,7 +629,7 @@ function OrderContent() {
                       <Button
                         onClick={handleLogin}
                         disabled={isCreatingAccount}
-                        className="w-full bg-orange-500 hover:bg-orange-600"
+                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
                       >
                         {isCreatingAccount ? 'Signing In...' : 'Sign In'}
                       </Button>
@@ -584,49 +639,52 @@ function OrderContent() {
                           <div className="w-full border-t border-gray-300" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                          <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
+                          <span className="px-4 bg-white text-gray-500 font-medium">Don't have an account?</span>
                         </div>
                       </div>
 
                       <Button
                         onClick={() => setAuthStep('signup')}
                         variant="outline"
-                        className="w-full"
+                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-gray-300 hover:border-orange-500 hover:text-orange-600"
                       >
                         Create New Account
                       </Button>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {authStep === 'signup' && (
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                      <div className="flex items-start space-x-3">
-                        <User className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-blue-900">Create Your Account</h4>
-                          <p className="text-sm text-blue-700 mt-1">
-                            Create an account to place your order and track it easily.
-                          </p>
-                        </div>
+              {authStep === 'signup' && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-start space-x-3">
+                      <User className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900">Create Your Account</h4>
+                        <p className="text-sm text-blue-700 mt-1">
+                          Create an account to place your order and track it easily.
+                        </p>
                       </div>
                     </div>
+                  </div>
 
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -634,12 +692,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -647,12 +706,13 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Password * (minimum 6 characters)
                       </label>
                       <Input
@@ -660,12 +720,13 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Create a password"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Confirm Password *
                       </label>
                       <Input
@@ -673,13 +734,14 @@ function OrderContent() {
                         value={customerInfo.confirmPassword}
                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                         placeholder="Confirm your password"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     {authError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-red-800 text-sm">{authError}</p>
+                      <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                        <p className="text-red-800 text-sm font-medium">{authError}</p>
                       </div>
                     )}
 
@@ -687,7 +749,7 @@ function OrderContent() {
                       <Button
                         onClick={handleSignup}
                         disabled={isCreatingAccount}
-                        className="w-full bg-orange-500 hover:bg-orange-600"
+                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
                       >
                         {isCreatingAccount ? 'Creating Account...' : 'Create Account & Continue'}
                       </Button>
@@ -697,37 +759,40 @@ function OrderContent() {
                           <div className="w-full border-t border-gray-300" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                          <span className="px-2 bg-white text-gray-500">Already have an account?</span>
+                          <span className="px-4 bg-white text-gray-500 font-medium">Already have an account?</span>
                         </div>
                       </div>
 
                       <Button
                         onClick={() => setAuthStep('login')}
                         variant="outline"
-                        className="w-full"
+                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-gray-300 hover:border-orange-500 hover:text-orange-600"
                       >
                         Sign In Instead
                       </Button>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {authStep === 'authenticated' && (
-                  <div className="space-y-4">
+              {authStep === 'authenticated' && (
+                <div className="space-y-6">
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -735,13 +800,14 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 bg-gray-50 focus:ring-0"
                         required
                         disabled
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -749,54 +815,74 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
+                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
                         required
                       />
                     </div>
 
                     {/* Location Picker */}
                     <div>
-                      <LocationPicker
-                        onLocationSelect={handleLocationSelect}
-                        initialLocation={deliveryLocation}
-                        required={true}
-                        showMap={true}
-                      />
+                      <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Delivery Location *
+                      </label>
+                      <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
+                        <LocationPicker
+                          onLocationSelect={handleLocationSelect}
+                          initialLocation={deliveryLocation}
+                          required={true}
+                          showMap={true}
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Special Instructions (Optional)
                       </label>
                       <textarea
                         value={customerInfo.notes}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
                         placeholder="Any special requests or dietary restrictions?"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        rows={3}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-0 focus:border-orange-500 text-base resize-none bg-white"
+                        rows={4}
                       />
                     </div>
+                  </div>
 
-                    {/* Submit Button */}
-                    <div className="pt-4">
-                      <Button
-                        onClick={handleSubmitOrder}
-                        disabled={!validateOrderForm() || isSubmitting}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-lg py-3"
-                      >
-                        {isSubmitting ? 'Placing Order...' : `Place Order - ${formatPrice(total)}`}
-                      </Button>
-                      
-                      {!isOnline && (
-                        <p className="text-sm text-orange-600 mt-2 text-center">
+                  {/* Submit Button - Professional Design */}
+                  <div className="pt-6 border-t border-gray-200">
+                    <Button
+                      onClick={handleSubmitOrder}
+                      disabled={!validateOrderForm() || isSubmitting}
+                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-16 text-lg font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
+                    >
+                      {isSubmitting ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                          Placing Order...
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          <CreditCard className="h-6 w-6 mr-3" />
+                          Place Order - {formatPrice(total)}
+                        </div>
+                      )}
+                    </Button>
+                    
+                    {!isOnline && (
+                      <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-sm text-orange-700 text-center font-medium">
                           Your order will be submitted when internet connection is restored.
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         </div>
       </div>
     </div>

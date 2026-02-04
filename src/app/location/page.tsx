@@ -140,43 +140,43 @@ export default function LocationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">Our Location</h1>
-          <p className="text-gray-600 mt-2">Visit us for an exceptional dining experience in Faisalabad</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Location</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Visit us for an exceptional dining experience in Faisalabad</p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Map Section */}
-          <div>
+          <div className="order-2 lg:order-1">
             <Card className="h-full">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-lg">
                   <MapPin className="h-5 w-5 text-orange-500" />
                   <span>Find Us in Faisalabad</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Google Maps Integration */}
-                <div className="mb-4">
+                <div className="mb-6">
                   <GoogleMap />
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Address</h3>
-                    <p className="text-gray-600">{restaurantInfo.address}</p>
+                    <p className="text-gray-600 text-sm sm:text-base">{restaurantInfo.address}</p>
                   </div>
 
                   <Button 
                     onClick={handleGetDirections}
-                    className="w-full bg-orange-500 hover:bg-orange-600"
+                    className="w-full bg-orange-500 hover:bg-orange-600 h-12 text-base"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-5 w-5 mr-2" />
                     Open in Google Maps
                   </Button>
                 </div>
@@ -185,45 +185,51 @@ export default function LocationPage() {
           </div>
 
           {/* Contact Information */}
-          <div className="space-y-6">
+          <div className="space-y-6 order-1 lg:order-2">
             {/* Contact Details */}
             <Card>
               <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
+                <CardTitle className="text-lg">Contact Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-5 w-5 text-orange-500" />
-                    <div>
-                      <p className="font-medium">Phone</p>
+                <div className="space-y-5">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Phone className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Phone</p>
                       <a 
                         href={`tel:${restaurantInfo.phone}`}
-                        className="text-gray-600 hover:text-orange-500 transition-colors"
+                        className="text-gray-600 hover:text-orange-500 transition-colors text-sm sm:text-base"
                       >
                         {restaurantInfo.phone}
                       </a>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-orange-500" />
-                    <div>
-                      <p className="font-medium">Email</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Mail className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Email</p>
                       <a 
                         href={`mailto:${restaurantInfo.email}`}
-                        className="text-gray-600 hover:text-orange-500 transition-colors"
+                        className="text-gray-600 hover:text-orange-500 transition-colors text-sm sm:text-base break-all"
                       >
                         {restaurantInfo.email}
                       </a>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-orange-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Address</p>
-                      <p className="text-gray-600">{restaurantInfo.address}</p>
+                  <div className="flex items-start space-x-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <MapPin className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Address</p>
+                      <p className="text-gray-600 text-sm sm:text-base">{restaurantInfo.address}</p>
                     </div>
                   </div>
                 </div>
@@ -233,17 +239,17 @@ export default function LocationPage() {
             {/* Hours */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-lg">
                   <Clock className="h-5 w-5 text-orange-500" />
                   <span>Hours of Operation</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {hours.map((schedule, index) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">{schedule.day}</span>
-                      <span className="text-gray-600">{schedule.time}</span>
+                    <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-1 sm:space-y-0">
+                      <span className="font-medium text-gray-900 text-sm sm:text-base">{schedule.day}</span>
+                      <span className="text-gray-600 text-sm sm:text-base">{schedule.time}</span>
                     </div>
                   ))}
                 </div>
@@ -259,12 +265,12 @@ export default function LocationPage() {
             {/* Parking & Accessibility */}
             <Card>
               <CardHeader>
-                <CardTitle>Parking & Accessibility</CardTitle>
+                <CardTitle className="text-lg">Parking & Accessibility</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium text-gray-900">Parking</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">Parking</h4>
                     <p className="text-gray-600 text-sm">
                       Free parking available in our lot behind the restaurant. 
                       Street parking also available on Kotwali Road.
@@ -272,7 +278,7 @@ export default function LocationPage() {
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900">Accessibility</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">Accessibility</h4>
                     <p className="text-gray-600 text-sm">
                       Our restaurant is fully wheelchair accessible with ramp access 
                       and accessible restrooms.
@@ -280,7 +286,7 @@ export default function LocationPage() {
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900">Public Transportation</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">Public Transportation</h4>
                     <p className="text-gray-600 text-sm">
                       Located near Faisalabad Railway Station. Local buses and rickshaws 
                       are available for convenient transportation.
@@ -296,13 +302,13 @@ export default function LocationPage() {
         <div className="mt-8">
           <Card>
             <CardHeader>
-              <CardTitle>Visit AT RESTAURANT in Faisalabad</CardTitle>
+              <CardTitle className="text-lg">Visit AT RESTAURANT in Faisalabad</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">What to Expect</h3>
-                  <ul className="space-y-2 text-gray-600">
+                  <h3 className="text-lg font-semibold mb-4">What to Expect</h3>
+                  <ul className="space-y-2 text-gray-600 text-sm sm:text-base">
                     <li>• Warm, welcoming Pakistani hospitality</li>
                     <li>• Fresh, locally-sourced ingredients</li>
                     <li>• Authentic flavors and traditional recipes</li>
@@ -312,17 +318,17 @@ export default function LocationPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Reservations & Orders</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-lg font-semibold mb-4">Reservations & Orders</h3>
+                  <div className="space-y-4">
                     <p className="text-gray-600 text-sm">
                       Walk-ins are welcome, but reservations are recommended for parties of 6 or more.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <Button variant="outline" className="flex-1">
-                        <Phone className="h-4 w-4 mr-2" />
+                      <Button variant="outline" className="flex-1 h-12 text-base">
+                        <Phone className="h-5 w-5 mr-2" />
                         Call for Reservations
                       </Button>
-                      <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
+                      <Button className="flex-1 bg-orange-500 hover:bg-orange-600 h-12 text-base">
                         Order Online
                       </Button>
                     </div>
