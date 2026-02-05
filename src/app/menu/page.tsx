@@ -191,33 +191,6 @@ export default function MenuPage() {
     }
   }
 
-  const loadCachedData = async () => {
-    try {
-      const hasCached = await offlineUtils.hasCachedData()
-      
-      if (!hasCached) {
-        throw new Error('No cached data available. Please connect to internet and refresh.')
-      }
-
-      const { categories: cachedCategories, menuItems: cachedMenuItems } = await offlineUtils.getCachedMenuData()
-      
-      if (cachedCategories.length === 0 || cachedMenuItems.length === 0) {
-        throw new Error('Cached data is empty. Please connect to internet and refresh.')
-      }
-
-      setCategories(cachedCategories)
-      setMenuItems(cachedMenuItems.map(item => ({
-        ...item,
-        category: cachedCategories.find(cat => cat.id === item.category_id)
-      })))
-
-    } catch (error: any) {
-      const errorMessage = logError('Cache Loading', error)
-      setError(errorMessage)
-      throw error
-    }
-  }
-
   const filteredItems = menuItems.filter(item => {
     const matchesCategory = selectedCategory === 'all' || item.category_id === selectedCategory
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -300,11 +273,11 @@ export default function MenuPage() {
     <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Our Menu</h1>
-              <p className="text-gray-600 mt-2">Discover our delicious offerings</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Menu</h1>
+              <p className="text-gray-600 mt-1">Discover our delicious offerings</p>
             </div>
             <div className="flex items-center space-x-2">
               {isOnline ? (
@@ -320,145 +293,191 @@ export default function MenuPage() {
               )}
             </div>
           </div>
-
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search menu items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          
+          {/* Search - Mobile optimized */}
+          <div className="mt-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                placeholder="Search menu items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Categories - Horizontal at top */}
-        <div className="mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Categories</h3>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-6 py-3 rounded-full transition-colors font-medium ${
-                  selectedCategory === 'all'
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'
-                }`}
-              >
-                All Items ({menuItems.length})
-              </button>
-              {categories.map((category) => {
-                const itemCount = menuItems.filter(item => item.category_id === category.id).length
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-6 py-3 rounded-full transition-colors font-medium ${
-                      selectedCategory === category.id
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'
-                    }`}
-                  >
-                    {category.name} ({itemCount})
-                  </button>
-                )
-              })}
+      <div className="flex">
+        {/* Main Content Area */}
+        <div className="flex-1 pr-12 sm:pr-16 pb-6">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Selected Category Title */}
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900">
+                {selectedCategory === 'all' 
+                  ? 'All Items' 
+                  : categories.find(cat => cat.id === selectedCategory)?.name || 'Menu Items'
+                }
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} available
+              </p>
             </div>
+
+            {/* Menu Items Grid */}
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
+                {searchQuery && (
+                  <p className="text-gray-400 text-sm mt-2">
+                    Try adjusting your search or selecting a different category.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredItems.map((item) => {
+                  const quantity = getCartItemQuantity(item.id)
+                  
+                  return (
+                    <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
+                      <div className="relative h-48 bg-gray-100 overflow-hidden">
+                        {item.image_url ? (
+                          <ImageWithModal
+                            src={item.image_url}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                        ) : (
+                          <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <span className="text-gray-600 font-medium">No Image</span>
+                          </div>
+                        )}
+                        {item.category && (
+                          <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
+                            {item.category.name}
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-6">
+                        <div className="mb-4">
+                          <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-bold text-orange-500">
+                              {formatPrice(item.price)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {quantity === 0 ? (
+                          <Button
+                            onClick={() => handleAddToCart(item)}
+                            className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add to Cart
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
+                                className="rounded-lg hover:bg-red-50 hover:border-red-200"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
+                                className="rounded-lg hover:bg-green-50 hover:border-green-200"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {formatPrice(item.price * quantity)}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Menu Items - Full width */}
-        <div>
-          {filteredItems.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
-              {searchQuery && (
-                <p className="text-gray-400 text-sm mt-2">
-                  Try adjusting your search or selecting a different category.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredItems.map((item) => {
-                const quantity = getCartItemQuantity(item.id)
-                
-                return (
-                  <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
-                    <div className="relative h-48 bg-gray-100 overflow-hidden">
-                      {item.image_url ? (
-                        <ImageWithModal
-                          src={item.image_url}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                        />
-                      ) : (
-                        <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                          <span className="text-gray-600 font-medium">No Image</span>
-                        </div>
-                      )}
-                      {item.category && (
-                        <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
-                          {item.category.name}
-                        </div>
-                      )}
-                    </div>
-                    <CardContent className="p-6">
-                      <div className="mb-4">
-                        <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-orange-500">
-                            {formatPrice(item.price)}
-                          </span>
-                        </div>
-                      </div>
+        {/* RIGHT Sidebar - Emoji Filters (All screen sizes) - Responsive with scrolling */}
+        <div className="fixed right-0 top-16 h-full bg-gray-900 w-12 sm:w-16 z-10 flex flex-col items-center py-4 sm:py-6 overflow-y-auto sidebar-scroll">
+          {/* Scrollable container for filters */}
+          <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
+            {/* All Categories */}
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+                selectedCategory === 'all'
+                  ? 'bg-orange-500 shadow-lg'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+              title="All Items"
+            >
+              🍽️
+            </button>
 
-                      {quantity === 0 ? (
-                        <Button
-                          onClick={() => handleAddToCart(item)}
-                          className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add to Cart
-                        </Button>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
-                              className="rounded-lg hover:bg-red-50 hover:border-red-200"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
-                              className="rounded-lg hover:bg-green-50 hover:border-green-200"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <span className="text-sm text-gray-600 font-medium">
-                            {formatPrice(item.price * quantity)}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
+            {/* Dynamic Categories with Emojis */}
+            {categories.map((category) => {
+              const getEmojiForCategory = (name: string) => {
+                const lowerName = name.toLowerCase()
+                if (lowerName.includes('pizza')) return '🍕'
+                if (lowerName.includes('burger')) return '�'
+                if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
+                if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
+                if (lowerName.includes('salad')) return '🥗'
+                if (lowerName.includes('pasta')) return '🍝'
+                if (lowerName.includes('dessert') || lowerName.includes('sweet')) return '🍰'
+                if (lowerName.includes('drink') || lowerName.includes('beverage')) return '🥤'
+                if (lowerName.includes('coffee')) return '☕'
+                if (lowerName.includes('ice cream')) return '🍦'
+                if (lowerName.includes('soup')) return '🍲'
+                if (lowerName.includes('seafood') || lowerName.includes('fish')) return '🐟'
+                if (lowerName.includes('vegetarian') || lowerName.includes('vegan')) return '🥬'
+                if (lowerName.includes('breakfast')) return '🍳'
+                if (lowerName.includes('snack')) return '🍿'
+                return '🍴'
+              }
+
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+                    selectedCategory === category.id
+                      ? 'bg-orange-500 shadow-lg'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title={category.name}
+                >
+                  {getEmojiForCategory(category.name)}
+                </button>
+              )
+            })}
+          </div>
+          
+          {/* Scroll indicator for mobile */}
+          <div className="sm:hidden mt-2 flex flex-col items-center space-y-1">
+            <div className="w-1 h-8 bg-gray-600 rounded-full opacity-50"></div>
+            <div className="text-gray-400 text-xs rotate-90 whitespace-nowrap">Scroll</div>
+          </div>
         </div>
       </div>
     </div>
