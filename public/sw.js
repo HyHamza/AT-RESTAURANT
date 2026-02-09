@@ -1,5 +1,5 @@
-// AT Restaurant - Service Worker v4
-const CACHE_VERSION = 'v4'
+// AT Restaurant - Service Worker v5
+const CACHE_VERSION = 'v5'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
@@ -13,7 +13,7 @@ const PRECACHE_ASSETS = [
 
 // Install event - skip waiting immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v4...')
+  console.log('[SW] Installing v5...')
   
   event.waitUntil(
     (async () => {
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - claim all clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v4...')
+  console.log('[SW] Activating v5...')
   
   event.waitUntil(
     (async () => {
@@ -86,12 +86,16 @@ self.addEventListener('fetch', (event) => {
   // Skip non-HTTP protocols
   if (!url.protocol.startsWith('http')) return
 
-  // CRITICAL: Skip Next.js internals to prevent hydration issues
+  // CRITICAL: Let Next.js internals pass through WITHOUT interception
+  // Don't call event.respondWith() for these - let browser handle them
   if (
     url.pathname.startsWith('/_next/') ||
     url.searchParams.has('_rsc') ||
-    url.pathname.includes('/_next/data/')
+    url.pathname.includes('/_next/data/') ||
+    url.pathname.startsWith('/__nextjs_') ||
+    url.pathname.includes('/webpack-')
   ) {
+    // Don't intercept - let it pass through to network
     return
   }
 
@@ -107,7 +111,6 @@ self.addEventListener('fetch', (event) => {
     )
     return
   }
-
   // Video - CRITICAL: Network first with background caching to prevent hangs
   // Large videos (16MB) should NEVER block the response
   if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm)$/)) {
@@ -192,22 +195,13 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Navigation - Network first with better offline fallback
+  // Navigation - Network first, NEVER cache HTML
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          // Try network first
+          // Always fetch fresh HTML from network
           const response = await fetch(request)
-          
-          // Cache successful navigation responses in background
-          if (response.ok) {
-            const responseClone = response.clone()
-            caches.open(RUNTIME_CACHE).then(cache => 
-              cache.put(request, responseClone)
-            ).catch(() => {})
-          }
-          
           return response
         } catch (error) {
           console.log('[SW] Navigation offline, trying cache:', url.pathname)
@@ -432,4 +426,4 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-console.log('[SW] Loaded v4')
+console.log('[SW] Loaded v5')
