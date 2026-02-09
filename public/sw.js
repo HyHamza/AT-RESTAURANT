@@ -2,6 +2,7 @@
 const CACHE_NAME = 'at-restaurant-v1'
 const RUNTIME_CACHE = 'at-restaurant-runtime-v1'
 const API_CACHE = 'at-restaurant-api-v1'
+const VIDEO_CACHE = 'at-restaurant-video-v1'
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
@@ -10,7 +11,8 @@ const PRECACHE_ASSETS = [
   '/menu',
   '/login',
   '/signup',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/assets/videos/hero.mp4'
 ]
 
 // Install event - cache essential assets
@@ -33,7 +35,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE && name !== API_CACHE)
+          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE && name !== API_CACHE && name !== VIDEO_CACHE)
           .map((name) => {
             console.log('[Service Worker] Deleting old cache:', name)
             return caches.delete(name)
@@ -76,6 +78,41 @@ self.addEventListener('fetch', (event) => {
             { status: 200, statusText: 'OK', headers: { 'Content-Type': 'image/gif' } }
           )
         })
+    )
+    return
+  }
+
+  // Video requests - cache first, network fallback
+  if (request.destination === 'video' || url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          console.log('[Service Worker] Serving video from cache:', url.pathname)
+          return cachedResponse
+        }
+
+        console.log('[Service Worker] Fetching video from network:', url.pathname)
+        return fetch(request).then((response) => {
+          // Only cache successful video responses from same origin
+          if (response.ok && url.origin === self.location.origin) {
+            const responseClone = response.clone()
+            caches.open(VIDEO_CACHE).then((cache) => {
+              console.log('[Service Worker] Caching video:', url.pathname)
+              cache.put(request, responseClone)
+            }).catch((error) => {
+              console.error('[Service Worker] Failed to cache video:', error)
+            })
+          }
+          return response
+        }).catch((error) => {
+          console.error('[Service Worker] Failed to fetch video:', error)
+          // Return empty video response for offline
+          return new Response(null, {
+            status: 503,
+            statusText: 'Video unavailable offline'
+          })
+        })
+      })
     )
     return
   }

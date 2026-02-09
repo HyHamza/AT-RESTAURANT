@@ -22,6 +22,24 @@ export function VideoBackground({
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [videoError, setVideoError] = useState(false)
+  const [isOffline, setIsOffline] = useState(false)
+
+  useEffect(() => {
+    // Check if we're offline
+    const checkOnlineStatus = () => {
+      setIsOffline(!navigator.onLine)
+    }
+
+    checkOnlineStatus()
+    window.addEventListener('online', checkOnlineStatus)
+    window.addEventListener('offline', checkOnlineStatus)
+
+    return () => {
+      window.removeEventListener('online', checkOnlineStatus)
+      window.removeEventListener('offline', checkOnlineStatus)
+    }
+  }, [])
 
   useEffect(() => {
     const video = videoRef.current
@@ -39,6 +57,15 @@ export function VideoBackground({
     // Handle video load
     const handleLoadedData = () => {
       setIsLoaded(true)
+      setVideoError(false)
+      console.log('[Video Background] Video loaded successfully')
+    }
+
+    // Handle video error
+    const handleError = (e: Event) => {
+      console.error('[Video Background] Failed to load video:', src, e)
+      setVideoError(true)
+      setIsLoaded(false)
     }
 
     // Prevent right-click download
@@ -56,6 +83,7 @@ export function VideoBackground({
     }
 
     video.addEventListener('loadeddata', handleLoadedData)
+    video.addEventListener('error', handleError)
     video.addEventListener('contextmenu', preventContextMenu)
     video.addEventListener('dragstart', preventDrag)
 
@@ -63,19 +91,25 @@ export function VideoBackground({
     const playVideo = async () => {
       try {
         await video.play()
+        console.log('[Video Background] Video playing')
       } catch (error) {
-        console.log('Video autoplay prevented:', error)
+        console.log('[Video Background] Video autoplay prevented:', error)
       }
     }
 
-    playVideo()
+    // Small delay to ensure service worker has time to serve cached video
+    const timer = setTimeout(() => {
+      playVideo()
+    }, 100)
 
     return () => {
+      clearTimeout(timer)
       video.removeEventListener('loadeddata', handleLoadedData)
+      video.removeEventListener('error', handleError)
       video.removeEventListener('contextmenu', preventContextMenu)
       video.removeEventListener('dragstart', preventDrag)
     }
-  }, [])
+  }, [src])
 
   return (
     <div 
@@ -92,27 +126,36 @@ export function VideoBackground({
       />
       
       {/* Video element with parallax effect */}
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        controlsList="nodownload noremoteplayback nofullscreen"
-        disablePictureInPicture
-        disableRemotePlayback
-        className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ 
-          filter: blur > 0 ? `blur(${blur}px)` : 'none',
-          transform: `scale(1.15) translate(var(--mouse-x, 0px), var(--mouse-y, 0px))`,
-        }}
-        onContextMenu={(e) => e.preventDefault()}
-        onDragStart={(e) => e.preventDefault()}
-      >
-        <source src={src} type="video/mp4" />
-      </video>
+      {!videoError && (
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controlsList="nodownload noremoteplayback nofullscreen"
+          disablePictureInPicture
+          disableRemotePlayback
+          className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ 
+            filter: blur > 0 ? `blur(${blur}px)` : 'none',
+            transform: enableParallax ? `scale(1.15) translate(var(--mouse-x, 0px), var(--mouse-y, 0px))` : 'scale(1.15)',
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+        >
+          <source src={src} type="video/mp4" />
+        </video>
+      )}
+      
+      {/* Offline/Error indicator - subtle */}
+      {(videoError || isOffline) && !isLoaded && (
+        <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
+          {isOffline ? '📡 Offline Mode' : '🎬 Video Loading...'}
+        </div>
+      )}
       
       {/* Professional Pink/White Overlay - Foodpanda Style */}
       <div 
