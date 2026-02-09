@@ -22,6 +22,13 @@
       color: #E91E63;
       margin-top: 0;
     }
+    .alert {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
     button {
       background: #E91E63;
       color: white;
@@ -31,6 +38,7 @@
       font-size: 16px;
       cursor: pointer;
       margin: 10px 5px;
+      font-weight: 600;
     }
     button:hover {
       background: #C2185B;
@@ -38,6 +46,12 @@
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
+    }
+    .big-button {
+      width: 100%;
+      padding: 20px;
+      font-size: 18px;
+      margin: 10px 0;
     }
     .status {
       margin-top: 20px;
@@ -64,16 +78,27 @@
 </head>
 <body>
   <div class="container">
-    <h1>🔧 Service Worker Manager</h1>
-    <p>Use this page to manage the service worker and clear caches if you're experiencing issues.</p>
+    <h1>🔧 Fix Loading Issues</h1>
     
-    <div>
-      <button onclick="unregisterServiceWorker()">Unregister Service Worker</button>
-      <button onclick="clearAllCaches()">Clear All Caches</button>
-      <button onclick="reloadPage()">Reload Page</button>
+    <div class="alert">
+      <strong>⚠️ If the website is stuck loading:</strong>
+      <p>Click the button below to fix it immediately!</p>
     </div>
 
+    <button class="big-button" onclick="fixEverything()">
+      🚀 FIX NOW - Clear Everything & Reload
+    </button>
+
     <div id="status" class="status" style="display: none;"></div>
+
+    <hr style="margin: 30px 0;">
+
+    <h3>Manual Steps:</h3>
+    <div>
+      <button onclick="unregisterServiceWorker()">1. Unregister Service Worker</button>
+      <button onclick="clearAllCaches()">2. Clear All Caches</button>
+      <button onclick="reloadPage()">3. Reload Page</button>
+    </div>
 
     <h3>Current Status:</h3>
     <div id="info" class="status info">
@@ -81,12 +106,12 @@
       <p><strong>Caches:</strong> <span id="cache-status">Checking...</span></p>
     </div>
 
-    <h3>Instructions:</h3>
+    <h3>Alternative Fix:</h3>
     <ol>
-      <li>Click "Unregister Service Worker" to remove the service worker</li>
-      <li>Click "Clear All Caches" to delete all cached data</li>
-      <li>Click "Reload Page" to refresh</li>
-      <li>Or do all at once: Unregister → Clear → Reload</li>
+      <li>Press <kbd>Ctrl+Shift+Delete</kbd> (or <kbd>Cmd+Shift+Delete</kbd> on Mac)</li>
+      <li>Select "Cached images and files"</li>
+      <li>Click "Clear data"</li>
+      <li>Reload the page</li>
     </ol>
   </div>
 
@@ -96,7 +121,7 @@
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations()
         document.getElementById('sw-status').textContent = 
-          registrations.length > 0 ? `Active (${registrations.length} registration(s))` : 'Not registered'
+          registrations.length > 0 ? `Active (${registrations.length} registration(s))` : 'Not registered ✅'
       } else {
         document.getElementById('sw-status').textContent = 'Not supported'
       }
@@ -105,7 +130,7 @@
       if ('caches' in window) {
         const cacheNames = await caches.keys()
         document.getElementById('cache-status').textContent = 
-          cacheNames.length > 0 ? `${cacheNames.length} cache(s): ${cacheNames.join(', ')}` : 'No caches'
+          cacheNames.length > 0 ? `${cacheNames.length} cache(s): ${cacheNames.join(', ')}` : 'No caches ✅'
       } else {
         document.getElementById('cache-status').textContent = 'Not supported'
       }
@@ -113,12 +138,9 @@
 
     function showStatus(message, type = 'info') {
       const statusDiv = document.getElementById('status')
-      statusDiv.textContent = message
+      statusDiv.innerHTML = message
       statusDiv.className = `status ${type}`
       statusDiv.style.display = 'block'
-      setTimeout(() => {
-        statusDiv.style.display = 'none'
-      }, 5000)
     }
 
     async function unregisterServiceWorker() {
@@ -130,11 +152,11 @@
           }
           showStatus('✅ Service worker unregistered successfully!', 'success')
           await checkStatus()
-        } else {
-          showStatus('❌ Service workers not supported', 'error')
+          return true
         }
       } catch (error) {
         showStatus(`❌ Error: ${error.message}`, 'error')
+        return false
       }
     }
 
@@ -145,16 +167,32 @@
           await Promise.all(cacheNames.map(name => caches.delete(name)))
           showStatus(`✅ Cleared ${cacheNames.length} cache(s) successfully!`, 'success')
           await checkStatus()
-        } else {
-          showStatus('❌ Cache API not supported', 'error')
+          return true
         }
       } catch (error) {
         showStatus(`❌ Error: ${error.message}`, 'error')
+        return false
       }
     }
 
     function reloadPage() {
       window.location.href = '/'
+    }
+
+    async function fixEverything() {
+      showStatus('🔄 Fixing... Please wait...', 'info')
+      
+      await unregisterServiceWorker()
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      await clearAllCaches()
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      showStatus('✅ Fixed! Reloading in 2 seconds...', 'success')
+      
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 2000)
     }
 
     // Check status on load

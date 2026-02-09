@@ -1,343 +1,78 @@
-// AT Restaurant - Service Worker
-const CACHE_VERSION = 'v2'
+// AT Restaurant - Service Worker (Minimal Safe Version)
+const CACHE_VERSION = 'v3'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
-const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
-const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
 const VIDEO_CACHE = `at-restaurant-video-${CACHE_VERSION}`
 
-// Assets to cache on install - only essential files
-const PRECACHE_ASSETS = [
-  '/',
-  '/offline',
-  '/favicon.ico'
-]
-
-// Install event - cache essential assets
+// Install event - minimal precaching
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...')
+  console.log('[Service Worker] Installing v3...')
+  // Skip waiting to activate immediately
+  self.skipWaiting()
+})
+
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Activating v3...')
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Service Worker] Precaching essential assets')
-        return cache.addAll(PRECACHE_ASSETS).catch((error) => {
-          console.error('[Service Worker] Precache failed:', error)
-          // Don't fail installation if precache fails
-          return Promise.resolve()
-        })
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith('at-restaurant-') && name !== CACHE_NAME && name !== VIDEO_CACHE)
+            .map((name) => {
+              console.log('[Service Worker] Deleting old cache:', name)
+              return caches.delete(name)
+            })
+        )
       })
       .then(() => {
-        console.log('[Service Worker] Skip waiting')
-        return self.skipWaiting()
-      })
-      .catch((error) => {
-        console.error('[Service Worker] Installation failed:', error)
+        console.log('[Service Worker] Claiming clients')
+        return self.clients.claim()
       })
   )
 })
 
-// Background cache update for video (non-blocking)
-self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...')
-  
-  // Clean up old caches
-  const cleanup = caches.keys().then((cacheNames) => {
-    return Promise.all(
-      cacheNames
-        .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE && name !== API_CACHE && name !== VIDEO_CACHE)
-        .map((name) => {
-          console.log('[Service Worker] Deleting old cache:', name)
-          return caches.delete(name)
-        })
-    )
-  })
-
-  // Background cache video (non-blocking)
-  const cacheVideo = caches.open(VIDEO_CACHE).then((cache) => {
-    console.log('[Service Worker] Background caching video...')
-    return cache.add('/assets/videos/hero.mp4').catch((error) => {
-      console.log('[Service Worker] Video cache skipped (will cache on first request):', error.message)
-    })
-  })
-
-  event.waitUntil(
-    Promise.all([cleanup, cacheVideo])
-      .then(() => self.clients.claim())
-      .catch((error) => {
-        console.error('[Service Worker] Activation error:', error)
-        return self.clients.claim() // Claim clients even if caching fails
-      })
-  )
-})
-
-// Fetch event - network first, fallback to cache
+// Fetch event - ONLY handle specific resources
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return
+  // ONLY intercept GET requests from same origin
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+    return // Let browser handle it
   }
 
-  // Skip chrome extensions and other protocols
-  if (!url.protocol.startsWith('http')) {
-    return
-  }
-
-  // Skip Next.js internal requests (_next/data, _next/static RSC payloads)
-  if (url.pathname.includes('/_next/data/') || url.searchParams.has('_rsc')) {
-    return
-  }
-
-  // Skip external images with CORS issues - let them fail naturally
-  if (request.destination === 'image' && url.origin !== self.location.origin) {
-    event.respondWith(
-      fetch(request, { mode: 'no-cors' })
-        .then((response) => response)
-        .catch(() => {
-          // Return transparent 1x1 pixel for failed external images
-          return new Response(
-            new Blob([new Uint8Array([
-              0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
-              0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21,
-              0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00,
-              0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
-              0x01, 0x00, 0x3B
-            ])], { type: 'image/gif' }),
-            { status: 200, statusText: 'OK', headers: { 'Content-Type': 'image/gif' } }
-          )
-        })
-    )
-    return
-  }
-
-  // Video requests - cache first, network fallback
+  // ONLY handle videos - everything else goes to network
   if (request.destination === 'video' || url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          console.log('[Service Worker] Serving video from cache:', url.pathname)
-          return cachedResponse
-        }
-
-        console.log('[Service Worker] Fetching video from network:', url.pathname)
-        return fetch(request).then((response) => {
-          // Only cache successful video responses from same origin
-          if (response.ok && url.origin === self.location.origin) {
-            const responseClone = response.clone()
-            caches.open(VIDEO_CACHE).then((cache) => {
-              console.log('[Service Worker] Caching video:', url.pathname)
-              cache.put(request, responseClone)
-            }).catch((error) => {
-              console.error('[Service Worker] Failed to cache video:', error)
-            })
+      caches.match(request)
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            console.log('[SW] Video from cache:', url.pathname)
+            return cachedResponse
           }
-          return response
-        }).catch((error) => {
-          console.error('[Service Worker] Failed to fetch video:', error)
-          // Return empty video response for offline
-          return new Response(null, {
-            status: 503,
-            statusText: 'Video unavailable offline'
-          })
-        })
-      })
-    )
-    return
-  }
 
-  // API requests - network first, cache fallback
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Clone and cache successful responses
-          if (response.ok) {
-            const responseClone = response.clone()
-            caches.open(API_CACHE).then((cache) => {
-              cache.put(request, responseClone)
-            }).catch(() => {
-              // Silently fail cache writes
-            })
-          }
-          return response
-        })
-        .catch(() => {
-          // Fallback to cache if network fails
-          return caches.match(request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse
-            }
-            // Return offline response for API calls
-            return new Response(
-              JSON.stringify({ error: 'Offline', offline: true }),
-              {
-                headers: { 'Content-Type': 'application/json' },
-                status: 503
+          return fetch(request)
+            .then((response) => {
+              if (response.ok) {
+                const responseClone = response.clone()
+                caches.open(VIDEO_CACHE)
+                  .then((cache) => cache.put(request, responseClone))
+                  .catch(() => {}) // Ignore cache errors
               }
-            )
-          })
+              return response
+            })
+            .catch(() => {
+              // Video failed to load
+              return new Response(null, { status: 503 })
+            })
         })
     )
     return
   }
 
-  // Page navigation requests - NETWORK ONLY (don't cache HTML to avoid stale pages)
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Don't cache navigation responses to avoid reload issues
-          return response
-        })
-        .catch(() => {
-          // Only fallback to offline page if network fails
-          return caches.match('/offline').then((offlinePage) => {
-            if (offlinePage) {
-              return offlinePage
-            }
-            // Return basic offline message if offline page not cached
-            return new Response(
-              '<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>You are offline</h1><p>Please check your internet connection.</p></body></html>',
-              {
-                headers: { 'Content-Type': 'text/html' },
-                status: 503
-              }
-            )
-          })
-        })
-    )
-    return
-  }
-
-  // Static assets - cache first, network fallback
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse
-      }
-
-      return fetch(request).then((response) => {
-        // Only cache same-origin responses
-        if (response.ok && url.origin === self.location.origin) {
-          const responseClone = response.clone()
-          caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(request, responseClone)
-          }).catch(() => {
-            // Silently fail cache writes
-          })
-        }
-        return response
-      }).catch((error) => {
-        // Return a transparent 1x1 pixel for failed images
-        if (request.destination === 'image') {
-          return new Response(
-            new Blob([new Uint8Array([
-              0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
-              0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21,
-              0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00,
-              0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
-              0x01, 0x00, 0x3B
-            ])], { type: 'image/gif' }),
-            { status: 200, statusText: 'OK', headers: { 'Content-Type': 'image/gif' } }
-          )
-        }
-        
-        // For scripts and other resources, check cache one more time
-        return caches.match(request).then((fallbackResponse) => {
-          if (fallbackResponse) {
-            return fallbackResponse
-          }
-          // Let it fail naturally for non-critical resources
-          throw error
-        })
-      })
-    })
-  )
+  // Let everything else (HTML, JS, CSS, API, images) go directly to network
+  // Don't intercept at all
 })
 
-// Handle messages from clients
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting()
-  }
-
-  if (event.data?.type === 'CACHE_MENU_DATA') {
-    // Cache menu data for offline access
-    const { data } = event.data
-    caches.open(API_CACHE).then((cache) => {
-      cache.put(
-        new Request('/api/menu'),
-        new Response(JSON.stringify(data), {
-          headers: { 'Content-Type': 'application/json' }
-        })
-      )
-    })
-  }
-
-  if (event.data?.type === 'CLEAR_CACHE') {
-    // Clear all caches
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((name) => caches.delete(name))
-      )
-    }).then(() => {
-      event.ports[0]?.postMessage({ success: true })
-    })
-  }
-})
-
-// Background sync for offline orders
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-orders') {
-    event.waitUntil(
-      // Notify client to handle sync
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({
-            type: 'SYNC_ORDERS',
-            timestamp: Date.now()
-          })
-        })
-      })
-    )
-  }
-})
-
-// Push notifications (for future use)
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {}
-  const title = data.title || 'AT Restaurant'
-  const options = {
-    body: data.body || 'You have a new notification',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    data: data.data || {}
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  )
-})
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Focus existing window if available
-      for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
-          return client.focus()
-        }
-      }
-      // Open new window if none exists
-      if (self.clients.openWindow) {
-        return self.clients.openWindow('/')
-      }
-    })
-  )
-})
-
-console.log('[Service Worker] Loaded successfully')
+console.log('[Service Worker] Loaded v3 - Minimal safe version')
