@@ -11,6 +11,7 @@ import { ParallaxHero } from '@/components/ui/parallax-hero'
 import { Search, Plus, Star, Clock, MapPin, ArrowRight, Heart } from 'lucide-react'
 import { HomepageSkeleton } from '@/components/skeletons/homepage-skeleton'
 import { supabase } from '@/lib/supabase'
+import { offlineUtils } from '@/lib/offline-db'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useToastHelpers } from '@/components/ui/toast'
@@ -48,6 +49,26 @@ export default function Home() {
     setError(null)
     
     try {
+      // Check if we're online
+      const isOnline = navigator.onLine
+      
+      if (!isOnline) {
+        // Try to load from IndexedDB when offline
+        console.log('[AT RESTAURANT - Homepage] Offline mode detected, loading from cache...')
+        const { categories: cachedCategories, menuItems: cachedMenuItems } = await offlineUtils.getCachedMenuData()
+        
+        if (cachedCategories.length > 0 && cachedMenuItems.length > 0) {
+          console.log(`[AT RESTAURANT - Homepage] Loaded ${cachedCategories.length} categories and ${cachedMenuItems.length} items from cache`)
+          setCategories(cachedCategories)
+          setMenuItems(cachedMenuItems)
+          toast.info('Offline Mode', 'Showing cached menu data. Some items may be outdated.')
+          return
+        } else {
+          throw new Error('No cached menu data available. Please connect to the internet to load the menu.')
+        }
+      }
+
+      // Online: Fetch from Supabase
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -77,6 +98,19 @@ export default function Home() {
 
       setCategories(categoriesData)
       setMenuItems(menuData)
+      
+      // Cache the data for offline use (fire-and-forget)
+      offlineUtils.cacheMenuData(
+        categoriesData,
+        menuData.map(item => ({
+          ...item,
+          category_name: item.category?.name,
+          created_at: item.created_at || new Date().toISOString()
+        }))
+      ).catch(err => {
+        console.warn('[AT RESTAURANT - Homepage] Failed to cache menu data:', err)
+      })
+      
     } catch (error: any) {
       const errorMessage = logError('Homepage Menu Loading', error)
       setError(errorMessage)
@@ -120,6 +154,8 @@ export default function Home() {
   }
 
   if (error) {
+    const isOffline = !navigator.onLine
+    
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4">
         <div className="max-w-md w-full">
@@ -127,23 +163,40 @@ export default function Home() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-200">
-                  <span className="text-destructive text-2xl">⚠️</span>
+                  <span className="text-destructive text-2xl">{isOffline ? '📡' : '⚠️'}</span>
                 </div>
-                <h2 className="text-xl font-semibold text-dark mb-2">Unable to Load Menu</h2>
+                <h2 className="text-xl font-semibold text-dark mb-2">
+                  {isOffline ? 'You\'re Offline' : 'Unable to Load Menu'}
+                </h2>
                 <p className="text-muted-text mb-4 text-sm">
-                  We're having trouble loading the menu right now.
+                  {isOffline 
+                    ? 'No cached menu data available. Please connect to the internet to load the menu.'
+                    : 'We\'re having trouble loading the menu right now.'
+                  }
                 </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <p className="text-destructive text-sm font-mono break-all">
-                    {error}
-                  </p>
-                </div>
+                {!isOffline && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                    <p className="text-destructive text-sm font-mono break-all">
+                      {error}
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2 text-left text-sm text-muted-text mb-6">
                   <p><strong>What you can do:</strong></p>
                   <ol className="list-decimal list-inside space-y-1">
-                    <li>Check your internet connection</li>
-                    <li>Refresh the page</li>
-                    <li>Contact support if the issue persists</li>
+                    {isOffline ? (
+                      <>
+                        <li>Check your internet connection</li>
+                        <li>Turn off airplane mode if enabled</li>
+                        <li>Try again once you're back online</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Check your internet connection</li>
+                        <li>Refresh the page</li>
+                        <li>Contact support if the issue persists</li>
+                      </>
+                    )}
                   </ol>
                 </div>
                 <Button 
