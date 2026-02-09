@@ -1,8 +1,9 @@
 // AT Restaurant - Service Worker
-const CACHE_NAME = 'at-restaurant-v1'
-const RUNTIME_CACHE = 'at-restaurant-runtime-v1'
-const API_CACHE = 'at-restaurant-api-v1'
-const VIDEO_CACHE = 'at-restaurant-video-v1'
+const CACHE_VERSION = 'v2'
+const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
+const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
+const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
+const VIDEO_CACHE = `at-restaurant-video-${CACHE_VERSION}`
 
 // Assets to cache on install - only essential files
 const PRECACHE_ASSETS = [
@@ -80,6 +81,11 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome extensions and other protocols
   if (!url.protocol.startsWith('http')) {
+    return
+  }
+
+  // Skip Next.js internal requests (_next/data, _next/static RSC payloads)
+  if (url.pathname.includes('/_next/data/') || url.searchParams.has('_rsc')) {
     return
   }
 
@@ -176,29 +182,28 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Page requests - network first, cache fallback
+  // Page navigation requests - NETWORK ONLY (don't cache HTML to avoid stale pages)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful page loads
-          if (response.ok) {
-            const responseClone = response.clone()
-            caches.open(RUNTIME_CACHE).then((cache) => {
-              cache.put(request, responseClone)
-            }).catch(() => {
-              // Silently fail cache writes
-            })
-          }
+          // Don't cache navigation responses to avoid reload issues
           return response
         })
         .catch(() => {
-          // Fallback to cache or offline page
-          return caches.match(request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse
+          // Only fallback to offline page if network fails
+          return caches.match('/offline').then((offlinePage) => {
+            if (offlinePage) {
+              return offlinePage
             }
-            return caches.match('/offline')
+            // Return basic offline message if offline page not cached
+            return new Response(
+              '<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>You are offline</h1><p>Please check your internet connection.</p></body></html>',
+              {
+                headers: { 'Content-Type': 'text/html' },
+                status: 503
+              }
+            )
           })
         })
     )
