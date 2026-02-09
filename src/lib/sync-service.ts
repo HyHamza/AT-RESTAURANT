@@ -171,12 +171,14 @@ export class SyncService {
     await offlineUtils.markOrderSynced(order.id)
 
     // Log successful sync
-    await offlineDb.syncLogs.add({
-      action: 'order_sync',
-      status: 'success',
-      details: `Order ${order.id} synced successfully`,
-      created_at: new Date().toISOString()
-    })
+    if (offlineDb) {
+      await offlineDb.syncLogs.add({
+        action: 'order_sync',
+        status: 'success',
+        details: `Order ${order.id} synced successfully`,
+        created_at: new Date().toISOString()
+      })
+    }
   }
 
   // Schedule retry with exponential backoff
@@ -193,7 +195,7 @@ export class SyncService {
     const timeout = setTimeout(async () => {
       this.retryTimeouts.delete(orderId)
       
-      if (networkUtils.isOnline() && !this.syncInProgress) {
+      if (networkUtils.isOnline() && !this.syncInProgress && offlineDb) {
         try {
           const order = await offlineDb.orders.get(orderId)
           if (order && order.synced === 0) {
@@ -220,12 +222,14 @@ export class SyncService {
     }
 
     // Reset sync attempts for all orders to give them another chance
-    const pendingOrders = await offlineUtils.getUnsyncedOrders()
-    for (const order of pendingOrders) {
-      await offlineDb.orders.update(order.id, {
-        sync_attempts: 0,
-        sync_error: undefined
-      })
+    if (offlineDb) {
+      const pendingOrders = await offlineUtils.getUnsyncedOrders()
+      for (const order of pendingOrders) {
+        await offlineDb.orders.update(order.id, {
+          sync_attempts: 0,
+          sync_error: undefined
+        })
+      }
     }
 
     return await this.syncPendingOrders()
@@ -240,10 +244,12 @@ export class SyncService {
   }> {
     const pendingOrders = await offlineUtils.getUnsyncedOrders()
     
-    const lastSyncLog = await offlineDb.syncLogs
-      .where('action').equals('order_sync')
-      .reverse()
-      .first()
+    const lastSyncLog = offlineDb 
+      ? await offlineDb.syncLogs
+          .where('action').equals('order_sync')
+          .reverse()
+          .first()
+      : null
 
     return {
       pendingOrders: pendingOrders.length,

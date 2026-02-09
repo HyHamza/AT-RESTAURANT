@@ -1,366 +1,210 @@
-// AT Restaurant - Service Worker
-const CACHE_VERSION = 'v2'
+// AT Restaurant - Service Worker v3
+const CACHE_VERSION = 'v3'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
 const VIDEO_CACHE = `at-restaurant-video-${CACHE_VERSION}`
 
-// CRITICAL: Do NOT cache navigation routes during install
-// Caching '/' causes circular dependency when SW intercepts its own fetch
+// Minimal precache - only critical offline assets
 const PRECACHE_ASSETS = [
   '/offline',
   '/favicon.ico'
 ]
 
-// Track installation state
-let isInstalling = false
-let isActivated = false
-
-// Install event - minimal, non-blocking setup
+// Install event - skip waiting immediately
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...')
-  isInstalling = true
+  console.log('[SW] Installing v3...')
   
   event.waitUntil(
     (async () => {
       try {
-        // Test if cache is available (handles private mode)
-        try {
-          const testCache = await caches.open('__test__')
-          await testCache.put(
-            new Request('/test'),
-            new Response('test', { headers: { 'Content-Type': 'text/plain' } })
-          )
-          await caches.delete('__test__')
-        } catch (error) {
-          console.warn('[Service Worker] Cache not available:', error)
-          // Continue anyway - SW can still work without cache
-        }
-
-        // Pre-cache only non-navigation assets
-        // Do NOT cache '/' or any HTML pages to avoid circular fetch
-        try {
-          const cache = await caches.open(CACHE_NAME)
-          console.log('[Service Worker] Precaching assets')
-          
-          // Cache each asset individually, ignore failures
-          await Promise.allSettled(
-            PRECACHE_ASSETS.map(asset =>
-              cache.add(asset).catch(err => {
-                console.warn(`[Service Worker] Failed to cache ${asset}:`, err)
-              })
+        // Precache critical assets only
+        const cache = await caches.open(CACHE_NAME)
+        await Promise.allSettled(
+          PRECACHE_ASSETS.map(url => 
+            cache.add(url).catch(err => 
+              console.warn(`[SW] Failed to cache ${url}:`, err.message)
             )
           )
-        } catch (error) {
-          console.warn('[Service Worker] Precache failed:', error)
-        }
-
-        console.log('[Service Worker] Installation complete')
+        )
+        console.log('[SW] Precache complete')
       } catch (error) {
-        console.error('[Service Worker] Installation error:', error)
-      } finally {
-        isInstalling = false
-        // CRITICAL: Skip waiting immediately to take control
-        // This prevents multiple SW versions from conflicting
-        await self.skipWaiting()
+        console.warn('[SW] Precache error:', error.message)
       }
+      
+      // CRITICAL: Skip waiting immediately to prevent multiple SW versions
+      await self.skipWaiting()
+      console.log('[SW] Skipped waiting')
     })()
   )
 })
 
-// Activate event - claim clients immediately
+// Activate event - claim all clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...')
+  console.log('[SW] Activating v3...')
   
   event.waitUntil(
     (async () => {
       try {
-        // Clean up old caches
-        try {
-          const cacheNames = await caches.keys()
-          await Promise.all(
-            cacheNames
-              .filter((name) => 
-                name !== CACHE_NAME && 
-                name !== RUNTIME_CACHE && 
-                name !== API_CACHE && 
-                name !== VIDEO_CACHE
-              )
-              .map((name) => {
-                console.log('[Service Worker] Deleting old cache:', name)
-                return caches.delete(name).catch(() => null)
-              })
-          )
-        } catch (error) {
-          console.warn('[Service Worker] Cache cleanup failed:', error)
-        }
-
-        // CRITICAL: Claim clients immediately
-        // This ensures all tabs are controlled by this SW version
-        await self.clients.claim()
-        isActivated = true
+        // Delete old caches
+        const cacheNames = await caches.keys()
+        const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE, VIDEO_CACHE]
         
-        console.log('[Service Worker] Activated and claimed clients')
-
-        // Background cache video (non-blocking, don't wait)
-        caches.open(VIDEO_CACHE).then(cache => {
-          cache.add('/assets/videos/hero.mp4').catch(() => {
-            console.log('[Service Worker] Video cache skipped')
-          })
-        }).catch(() => {})
-        
+        await Promise.all(
+          cacheNames
+            .filter(name => !validCaches.includes(name))
+            .map(name => {
+              console.log('[SW] Deleting old cache:', name)
+              return caches.delete(name)
+            })
+        )
       } catch (error) {
-        console.error('[Service Worker] Activation error:', error)
-        // Always claim clients even on error
-        await self.clients.claim()
-        isActivated = true
+        console.warn('[SW] Cache cleanup error:', error.message)
       }
+
+      // CRITICAL: Claim all clients immediately
+      await self.clients.claim()
+      console.log('[SW] Claimed all clients')
+      
+      // Notify all clients that SW is ready
+      const clients = await self.clients.matchAll({ type: 'window' })
+      clients.forEach(client => {
+        client.postMessage({ type: 'SW_ACTIVATED', version: CACHE_VERSION })
+      })
     })()
   )
 })
 
-// Fetch event - CRITICAL: Must never block or hang
+// Fetch event - CRITICAL: Must ALWAYS return a response, never hang
 self.addEventListener('fetch', (event) => {
   const { request } = event
-  
-  // Skip non-GET requests immediately
-  if (request.method !== 'GET') {
-    return
-  }
-
   const url = new URL(request.url)
 
+  // Skip non-GET requests
+  if (request.method !== 'GET') return
+
   // Skip non-HTTP protocols
-  if (!url.protocol.startsWith('http')) {
+  if (!url.protocol.startsWith('http')) return
+
+  // CRITICAL: Skip Next.js internals to prevent hydration issues
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.searchParams.has('_rsc') ||
+    url.pathname.includes('/_next/data/')
+  ) {
     return
   }
 
-  // CRITICAL: Skip Next.js internal requests to avoid hydration issues
-  if (url.pathname.includes('/_next/data/') || 
-      url.searchParams.has('_rsc') ||
-      url.pathname.startsWith('/_next/static/')) {
-    return
-  }
-
-  // CRITICAL: During installation, pass through all requests
-  // This prevents circular dependency when SW tries to cache '/'
-  if (isInstalling) {
-    return
-  }
-
-  // Handle external images with CORS
+  // External images - simple CORS handling
   if (request.destination === 'image' && url.origin !== self.location.origin) {
     event.respondWith(
-      fetch(request, { mode: 'no-cors' })
-        .catch(() => {
-          // Return transparent 1x1 GIF for failed images
-          return new Response(
-            new Blob([new Uint8Array([
-              0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
-              0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21,
-              0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00,
-              0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
-              0x01, 0x00, 0x3B
-            ])], { type: 'image/gif' }),
-            { status: 200, headers: { 'Content-Type': 'image/gif' } }
-          )
-        })
+      fetch(request, { mode: 'no-cors' }).catch(() => 
+        new Response(
+          new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
+          { status: 200, headers: { 'Content-Type': 'image/gif' } }
+        )
+      )
     )
     return
   }
 
-  // Video requests - cache first with timeout
-  if (request.destination === 'video' || url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
+  // Video - cache first, network fallback
+  if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm)$/)) {
     event.respondWith(
-      (async () => {
-        try {
-          // Try cache first with timeout
-          const cachePromise = caches.match(request)
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Cache timeout')), 1000)
-          )
-          
-          const cachedResponse = await Promise.race([cachePromise, timeoutPromise])
-            .catch(() => null)
-
-          if (cachedResponse) {
-            console.log('[Service Worker] Serving video from cache:', url.pathname)
-            return cachedResponse
-          }
-
-          // Fetch from network
-          console.log('[Service Worker] Fetching video from network:', url.pathname)
-          const response = await fetch(request)
-          
-          // Cache successful responses (non-blocking)
+      caches.match(request).then(cached => {
+        if (cached) return cached
+        
+        return fetch(request).then(response => {
           if (response.ok && url.origin === self.location.origin) {
-            const responseClone = response.clone()
-            caches.open(VIDEO_CACHE).then(cache => {
-              cache.put(request, responseClone).catch(() => {})
-            }).catch(() => {})
+            caches.open(VIDEO_CACHE).then(cache => 
+              cache.put(request, response.clone()).catch(() => {})
+            )
           }
-          
           return response
-        } catch (error) {
-          console.error('[Service Worker] Video fetch failed:', error)
-          return new Response(null, { status: 503, statusText: 'Video unavailable' })
-        }
-      })()
+        }).catch(() => 
+          new Response(null, { status: 503, statusText: 'Video unavailable' })
+        )
+      })
     )
     return
   }
 
-  // API requests - network first with cache fallback
+  // API - network first, cache fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      (async () => {
-        try {
-          const response = await fetch(request)
-          
-          // Cache successful responses (non-blocking)
+      fetch(request)
+        .then(response => {
           if (response.ok) {
-            const responseClone = response.clone()
-            caches.open(API_CACHE).then(cache => {
-              cache.put(request, responseClone).catch(() => {})
-            }).catch(() => {})
-          }
-          
-          return response
-        } catch (error) {
-          // Try cache fallback with timeout
-          try {
-            const cachePromise = caches.match(request)
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Cache timeout')), 500)
+            caches.open(API_CACHE).then(cache => 
+              cache.put(request, response.clone()).catch(() => {})
             )
-            
-            const cachedResponse = await Promise.race([cachePromise, timeoutPromise])
-            
-            if (cachedResponse) {
-              return cachedResponse
-            }
-          } catch {}
-          
-          // Return offline response
-          return new Response(
-            JSON.stringify({ error: 'Offline', offline: true }),
-            {
-              headers: { 'Content-Type': 'application/json' },
-              status: 503
-            }
+          }
+          return response
+        })
+        .catch(() => 
+          caches.match(request).then(cached => 
+            cached || new Response(
+              JSON.stringify({ error: 'Offline', offline: true }),
+              { headers: { 'Content-Type': 'application/json' }, status: 503 }
+            )
           )
-        }
-      })()
+        )
     )
     return
   }
 
-  // CRITICAL: Navigation requests - NETWORK ONLY, never cache HTML
-  // Caching HTML causes stale page issues and circular dependencies
+  // Navigation - ALWAYS network first, never cache HTML
   if (request.mode === 'navigate') {
     event.respondWith(
-      (async () => {
-        try {
-          // Always fetch fresh HTML from network
-          const response = await fetch(request)
-          return response
-        } catch (error) {
-          // Only on network failure, show offline page
-          try {
-            const cachePromise = caches.match('/offline')
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Cache timeout')), 500)
-            )
-            
-            const offlinePage = await Promise.race([cachePromise, timeoutPromise])
-            
-            if (offlinePage) {
-              return offlinePage
-            }
-          } catch {}
-          
-          // Final fallback
-          return new Response(
-            '<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>You are offline</h1><p>Please check your internet connection.</p></body></html>',
-            {
-              headers: { 'Content-Type': 'text/html' },
-              status: 503
-            }
+      fetch(request).catch(() => 
+        caches.match('/offline').then(offline => 
+          offline || new Response(
+            '<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>Offline</h1><p>Check your connection.</p></body></html>',
+            { headers: { 'Content-Type': 'text/html' }, status: 503 }
           )
-        }
-      })()
+        )
+      )
     )
     return
   }
 
-  // Static assets - cache first with network fallback
+  // Static assets - cache first, network fallback
   event.respondWith(
-    (async () => {
-      try {
-        // Try cache first with timeout
-        const cachePromise = caches.match(request)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Cache timeout')), 1000)
-        )
-        
-        const cachedResponse = await Promise.race([cachePromise, timeoutPromise])
-          .catch(() => null)
+    caches.match(request).then(cached => {
+      if (cached) return cached
 
-        if (cachedResponse) {
-          return cachedResponse
-        }
-
-        // Fetch from network
-        const response = await fetch(request)
-        
-        // Cache successful same-origin responses (non-blocking)
+      return fetch(request).then(response => {
         if (response.ok && url.origin === self.location.origin) {
-          const responseClone = response.clone()
-          caches.open(RUNTIME_CACHE).then(cache => {
-            cache.put(request, responseClone).catch(() => {})
-          }).catch(() => {})
+          caches.open(RUNTIME_CACHE).then(cache => 
+            cache.put(request, response.clone()).catch(() => {})
+          )
         }
-        
         return response
-      } catch (error) {
-        // Return transparent GIF for failed images
+      }).catch(error => {
+        // Fallback for images
         if (request.destination === 'image') {
           return new Response(
-            new Blob([new Uint8Array([
-              0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
-              0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21,
-              0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00,
-              0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
-              0x01, 0x00, 0x3B
-            ])], { type: 'image/gif' }),
+            new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
             { status: 200, headers: { 'Content-Type': 'image/gif' } }
           )
         }
-        
-        // Try cache one more time for other resources
-        try {
-          const fallback = await caches.match(request)
-          if (fallback) return fallback
-        } catch {}
-        
         throw error
-      }
-    })()
+      })
+    })
   )
 })
 
-// Handle messages from clients
+// Message handler
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting()
   }
 
   if (event.data?.type === 'CACHE_MENU_DATA') {
-    const { data } = event.data
     caches.open(API_CACHE).then(cache => {
       cache.put(
         new Request('/api/menu'),
-        new Response(JSON.stringify(data), {
+        new Response(JSON.stringify(event.data.data), {
           headers: { 'Content-Type': 'application/json' }
         })
       ).catch(() => {})
@@ -368,11 +212,9 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'CLEAR_CACHE') {
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(name => caches.delete(name))
-      )
-    }).then(() => {
+    caches.keys().then(names => 
+      Promise.all(names.map(name => caches.delete(name)))
+    ).then(() => {
       event.ports[0]?.postMessage({ success: true })
     }).catch(() => {
       event.ports[0]?.postMessage({ success: false })
@@ -380,17 +222,14 @@ self.addEventListener('message', (event) => {
   }
 })
 
-// Background sync for offline orders
+// Background sync
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-orders') {
     event.waitUntil(
       self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'SYNC_ORDERS',
-            timestamp: Date.now()
-          })
-        })
+        clients.forEach(client => 
+          client.postMessage({ type: 'SYNC_ORDERS', timestamp: Date.now() })
+        )
       })
     )
   }
@@ -399,35 +238,25 @@ self.addEventListener('sync', (event) => {
 // Push notifications
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {}
-  const title = data.title || 'AT Restaurant'
-  const options = {
-    body: data.body || 'You have a new notification',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    data: data.data || {}
-  }
-
   event.waitUntil(
-    self.registration.showNotification(title, options)
-  )
-})
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clientList => {
-      for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
-          return client.focus()
-        }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow('/')
-      }
+    self.registration.showNotification(data.title || 'AT Restaurant', {
+      body: data.body || 'New notification',
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      data: data.data || {}
     })
   )
 })
 
-console.log('[Service Worker] Loaded')
+// Notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then(clients => {
+      const client = clients.find(c => c.url === '/' && 'focus' in c)
+      return client ? client.focus() : self.clients.openWindow('/')
+    })
+  )
+})
+
+console.log('[SW] Loaded v3')
