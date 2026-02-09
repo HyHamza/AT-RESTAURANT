@@ -108,47 +108,77 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Video - cache first, network fallback
+  // Video - CRITICAL: Network first with background caching to prevent hangs
+  // Large videos (16MB) should NEVER block the response
   if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm)$/)) {
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached
-        
-        return fetch(request).then(response => {
-          if (response.ok && url.origin === self.location.origin) {
-            caches.open(VIDEO_CACHE).then(cache => 
-              cache.put(request, response.clone()).catch(() => {})
-            )
+      (async () => {
+        try {
+          // Check cache first (instant if available)
+          const cached = await caches.match(request)
+          if (cached) {
+            console.log('[SW] Video served from cache:', url.pathname)
+            return cached
           }
+
+          // Fetch from network (don't wait for caching)
+          console.log('[SW] Fetching video from network:', url.pathname)
+          const response = await fetch(request)
+          
+          // CRITICAL: Clone and cache in background WITHOUT blocking the response
+          if (response.ok && url.origin === self.location.origin) {
+            // Fire-and-forget caching (no await, no blocking)
+            const responseClone = response.clone()
+            caches.open(VIDEO_CACHE).then(cache => {
+              console.log('[SW] Caching video in background:', url.pathname)
+              return cache.put(request, responseClone)
+            }).then(() => {
+              console.log('[SW] Video cached successfully:', url.pathname)
+            }).catch(err => {
+              console.warn('[SW] Video cache failed (quota?):', err.message)
+            })
+          }
+          
+          // Return response immediately (don't wait for cache)
           return response
-        }).catch(() => 
-          new Response(null, { status: 503, statusText: 'Video unavailable' })
-        )
-      })
+        } catch (error) {
+          console.warn('[SW] Video fetch failed:', error)
+          // Return a proper error response instead of hanging
+          return new Response(null, { 
+            status: 503, 
+            statusText: 'Video unavailable offline' 
+          })
+        }
+      })()
     )
     return
   }
 
-  // API - network first, cache fallback
+  // API - network first with background caching (non-blocking)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(request)
-        .then(response => {
+      (async () => {
+        try {
+          const response = await fetch(request)
+          
+          // Cache in background (fire-and-forget)
           if (response.ok) {
+            const responseClone = response.clone()
             caches.open(API_CACHE).then(cache => 
-              cache.put(request, response.clone()).catch(() => {})
-            )
+              cache.put(request, responseClone)
+            ).catch(() => {})
           }
+          
           return response
-        })
-        .catch(() => 
-          caches.match(request).then(cached => 
-            cached || new Response(
-              JSON.stringify({ error: 'Offline', offline: true }),
-              { headers: { 'Content-Type': 'application/json' }, status: 503 }
-            )
+        } catch (error) {
+          // Fallback to cache if offline
+          const cached = await caches.match(request)
+          return cached || new Response(
+            JSON.stringify({ error: 'Offline', offline: true }),
+            { headers: { 'Content-Type': 'application/json' }, status: 503 }
           )
-        )
+        }
+      })()
     )
     return
   }
@@ -168,19 +198,39 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Static assets - cache first, network fallback
+  // Static assets - cache first with background refresh (stale-while-revalidate)
   event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached
+    (async () => {
+      const cached = await caches.match(request)
+      
+      // Return cached immediately if available
+      if (cached) {
+        // Refresh cache in background (fire-and-forget)
+        fetch(request).then(response => {
+          if (response.ok && url.origin === self.location.origin) {
+            caches.open(RUNTIME_CACHE).then(cache => 
+              cache.put(request, response)
+            ).catch(() => {})
+          }
+        }).catch(() => {})
+        
+        return cached
+      }
 
-      return fetch(request).then(response => {
+      // Not in cache, fetch from network
+      try {
+        const response = await fetch(request)
+        
+        // Cache in background (fire-and-forget)
         if (response.ok && url.origin === self.location.origin) {
+          const responseClone = response.clone()
           caches.open(RUNTIME_CACHE).then(cache => 
-            cache.put(request, response.clone()).catch(() => {})
-          )
+            cache.put(request, responseClone)
+          ).catch(() => {})
         }
+        
         return response
-      }).catch(error => {
+      } catch (error) {
         // Fallback for images
         if (request.destination === 'image') {
           return new Response(
@@ -189,8 +239,8 @@ self.addEventListener('fetch', (event) => {
           )
         }
         throw error
-      })
-    })
+      }
+    })()
   )
 })
 

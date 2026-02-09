@@ -22,8 +22,10 @@ export function VideoBackground({
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [videoError, setVideoError] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [loadProgress, setLoadProgress] = useState(0)
 
   useEffect(() => {
     // Check if we're offline
@@ -54,11 +56,31 @@ export function VideoBackground({
     video.setAttribute('disablePictureInPicture', 'true')
     video.setAttribute('disableRemotePlayback', 'true')
     
+    // Track loading progress
+    const handleProgress = () => {
+      if (video.buffered.length > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1)
+        const duration = video.duration
+        if (duration > 0) {
+          const progress = (bufferedEnd / duration) * 100
+          setLoadProgress(Math.min(progress, 100))
+        }
+      }
+    }
+
     // Handle video load
     const handleLoadedData = () => {
       setIsLoaded(true)
+      setIsLoading(false)
       setVideoError(false)
+      setLoadProgress(100)
       console.log('[Video Background] Video loaded successfully')
+    }
+
+    // Handle video can play through
+    const handleCanPlayThrough = () => {
+      setIsLoading(false)
+      console.log('[Video Background] Video can play through')
     }
 
     // Handle video error
@@ -66,6 +88,7 @@ export function VideoBackground({
       console.error('[Video Background] Failed to load video:', src, e)
       setVideoError(true)
       setIsLoaded(false)
+      setIsLoading(false)
     }
 
     // Prevent right-click download
@@ -83,28 +106,39 @@ export function VideoBackground({
     }
 
     video.addEventListener('loadeddata', handleLoadedData)
+    video.addEventListener('canplaythrough', handleCanPlayThrough)
+    video.addEventListener('progress', handleProgress)
     video.addEventListener('error', handleError)
     video.addEventListener('contextmenu', preventContextMenu)
     video.addEventListener('dragstart', preventDrag)
 
-    // Attempt to play the video
+    // Attempt to play the video immediately (don't wait for SW)
     const playVideo = async () => {
       try {
+        // Start loading immediately
+        video.load()
         await video.play()
         console.log('[Video Background] Video playing')
       } catch (error) {
         console.log('[Video Background] Video autoplay prevented:', error)
+        // Try again on user interaction
+        const playOnInteraction = () => {
+          video.play().catch(() => {})
+          document.removeEventListener('click', playOnInteraction)
+          document.removeEventListener('touchstart', playOnInteraction)
+        }
+        document.addEventListener('click', playOnInteraction, { once: true })
+        document.addEventListener('touchstart', playOnInteraction, { once: true })
       }
     }
 
-    // Small delay to ensure service worker has time to serve cached video
-    const timer = setTimeout(() => {
-      playVideo()
-    }, 100)
+    // Start immediately (no delay)
+    playVideo()
 
     return () => {
-      clearTimeout(timer)
       video.removeEventListener('loadeddata', handleLoadedData)
+      video.removeEventListener('canplaythrough', handleCanPlayThrough)
+      video.removeEventListener('progress', handleProgress)
       video.removeEventListener('error', handleError)
       video.removeEventListener('contextmenu', preventContextMenu)
       video.removeEventListener('dragstart', preventDrag)
@@ -133,6 +167,7 @@ export function VideoBackground({
           loop
           muted
           playsInline
+          preload="auto"
           controlsList="nodownload noremoteplayback nofullscreen"
           disablePictureInPicture
           disableRemotePlayback
@@ -150,10 +185,18 @@ export function VideoBackground({
         </video>
       )}
       
+      {/* Loading indicator - only show while actively loading */}
+      {isLoading && !isLoaded && !videoError && (
+        <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span>Loading video... {Math.round(loadProgress)}%</span>
+        </div>
+      )}
+      
       {/* Offline/Error indicator - subtle */}
-      {(videoError || isOffline) && !isLoaded && (
+      {(videoError || (isOffline && !isLoaded)) && (
         <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
-          {isOffline ? '📡 Offline Mode' : '🎬 Video Loading...'}
+          {isOffline ? '📡 Offline Mode' : '🎬 Video unavailable'}
         </div>
       )}
       
