@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Worker Test Page</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .success { border-left: 4px solid #22c55e; }
+    .error { border-left: 4px solid #ef4444; }
+    .warning { border-left: 4px solid #f59e0b; }
+    .info { border-left: 4px solid #3b82f6; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    .log {
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 Service Worker Test Page</h1>
+  
+  <div class="status info">
+    <h3>Test Instructions</h3>
+    <ol>
+      <li>Open this page in a fresh browser (or incognito)</li>
+      <li>Click "Register Service Worker"</li>
+      <li>Open this page in 2-3 more tabs <strong>immediately</strong></li>
+      <li>All tabs should show "✅ Service Worker Active"</li>
+      <li>If any tab hangs or shows errors, the fix didn't work</li>
+    </ol>
+  </div>
+
+  <div id="status" class="status">
+    <h3>Status: <span id="statusText">Checking...</span></h3>
+    <p><strong>SW Support:</strong> <span id="swSupport">-</span></p>
+    <p><strong>SW State:</strong> <span id="swState">-</span></p>
+    <p><strong>Controller:</strong> <span id="controller">-</span></p>
+    <p><strong>Registration:</strong> <span id="registration">-</span></p>
+    <p><strong>Cache Available:</strong> <span id="cacheAvailable">-</span></p>
+    <p><strong>IndexedDB Available:</strong> <span id="idbAvailable">-</span></p>
+  </div>
+
+  <div>
+    <button onclick="registerSW()">Register Service Worker</button>
+    <button onclick="unregisterSW()">Unregister Service Worker</button>
+    <button onclick="checkStatus()">Refresh Status</button>
+    <button onclick="clearCache()">Clear Cache</button>
+    <button onclick="testFetch()">Test Fetch</button>
+  </div>
+
+  <div class="status">
+    <h3>Console Log</h3>
+    <pre id="log" class="log"></pre>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+
+    function addLog(type, ...args) {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      logEl.textContent += `[${timestamp}] ${type}: ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    console.log = (...args) => {
+      originalConsoleLog(...args);
+      addLog('LOG', ...args);
+    };
+
+    console.error = (...args) => {
+      originalConsoleError(...args);
+      addLog('ERROR', ...args);
+    };
+
+    console.warn = (...args) => {
+      originalConsoleWarn(...args);
+      addLog('WARN', ...args);
+    };
+
+    async function checkStatus() {
+      const statusEl = document.getElementById('status');
+      const statusTextEl = document.getElementById('statusText');
+      
+      // Check SW support
+      const swSupported = 'serviceWorker' in navigator;
+      document.getElementById('swSupport').textContent = swSupported ? '✅ Yes' : '❌ No';
+      
+      if (!swSupported) {
+        statusTextEl.textContent = '❌ Not Supported';
+        statusEl.className = 'status error';
+        return;
+      }
+
+      // Check controller
+      const hasController = !!navigator.serviceWorker.controller;
+      document.getElementById('controller').textContent = hasController ? '✅ Active' : '⏳ None';
+
+      // Check registration
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          document.getElementById('registration').textContent = '✅ Registered';
+          
+          if (registration.active) {
+            document.getElementById('swState').textContent = '✅ Active';
+            statusTextEl.textContent = '✅ Service Worker Active';
+            statusEl.className = 'status success';
+          } else if (registration.installing) {
+            document.getElementById('swState').textContent = '⏳ Installing';
+            statusTextEl.textContent = '⏳ Installing...';
+            statusEl.className = 'status warning';
+          } else if (registration.waiting) {
+            document.getElementById('swState').textContent = '⏳ Waiting';
+            statusTextEl.textContent = '⏳ Waiting to activate';
+            statusEl.className = 'status warning';
+          }
+        } else {
+          document.getElementById('registration').textContent = '❌ Not registered';
+          document.getElementById('swState').textContent = '-';
+          statusTextEl.textContent = '⚠️ Not Registered';
+          statusEl.className = 'status warning';
+        }
+      } catch (error) {
+        console.error('Failed to check registration:', error);
+        statusTextEl.textContent = '❌ Error';
+        statusEl.className = 'status error';
+      }
+
+      // Check cache
+      try {
+        if ('caches' in window) {
+          await caches.open('__test__');
+          await caches.delete('__test__');
+          document.getElementById('cacheAvailable').textContent = '✅ Yes';
+        } else {
+          document.getElementById('cacheAvailable').textContent = '❌ No';
+        }
+      } catch (error) {
+        document.getElementById('cacheAvailable').textContent = '❌ Blocked';
+      }
+
+      // Check IndexedDB
+      try {
+        const testDB = indexedDB.open('__test__');
+        await new Promise((resolve, reject) => {
+          testDB.onsuccess = resolve;
+          testDB.onerror = reject;
+          setTimeout(() => reject(new Error('timeout')), 100);
+        });
+        indexedDB.deleteDatabase('__test__');
+        document.getElementById('idbAvailable').textContent = '✅ Yes';
+      } catch (error) {
+        document.getElementById('idbAvailable').textContent = '❌ Blocked';
+      }
+    }
+
+    async function registerSW() {
+      console.log('Registering service worker...');
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+          updateViaCache: 'none'
+        });
+        console.log('Service worker registered:', registration);
+        
+        // Wait for ready
+        await navigator.serviceWorker.ready;
+        console.log('Service worker ready');
+        
+        await checkStatus();
+      } catch (error) {
+        console.error('Registration failed:', error);
+      }
+    }
+
+    async function unregisterSW() {
+      console.log('Unregistering service worker...');
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.unregister();
+          console.log('Service worker unregistered');
+        } else {
+          console.log('No service worker to unregister');
+        }
+        await checkStatus();
+      } catch (error) {
+        console.error('Unregister failed:', error);
+      }
+    }
+
+    async function clearCache() {
+      console.log('Clearing cache...');
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('Cache cleared:', cacheNames);
+      } catch (error) {
+        console.error('Clear cache failed:', error);
+      }
+    }
+
+    async function testFetch() {
+      console.log('Testing fetch...');
+      try {
+        const start = Date.now();
+        const response = await fetch('/favicon.ico');
+        const elapsed = Date.now() - start;
+        console.log(`Fetch completed in ${elapsed}ms, status: ${response.status}`);
+      } catch (error) {
+        console.error('Fetch failed:', error);
+      }
+    }
+
+    // Auto-check status on load
+    checkStatus();
+
+    // Listen for SW updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('Controller changed');
+        checkStatus();
+      });
+
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        console.log('Message from SW:', event.data);
+      });
+    }
+
+    // Periodic status check
+    setInterval(checkStatus, 5000);
+  </script>
+</body>
+</html>
