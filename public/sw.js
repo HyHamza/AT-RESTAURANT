@@ -1,5 +1,5 @@
-// AT Restaurant - Service Worker v6
-const CACHE_VERSION = 'v6'
+// AT Restaurant - Service Worker v7
+const CACHE_VERSION = 'v7'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
@@ -13,7 +13,7 @@ const PRECACHE_ASSETS = [
 
 // Install event - skip waiting immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v6...')
+  console.log('[SW] Installing v7...')
   
   event.waitUntil(
     (async () => {
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - claim all clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v6...')
+  console.log('[SW] Activating v7...')
   
   event.waitUntil(
     (async () => {
@@ -99,15 +99,23 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // External images - simple CORS handling
+  // External images - CORS handling with proper fallback
   if (request.destination === 'image' && url.origin !== self.location.origin) {
     event.respondWith(
-      fetch(request, { mode: 'no-cors' }).catch(() => 
-        new Response(
-          new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
-          { status: 200, headers: { 'Content-Type': 'image/gif' } }
-        )
-      )
+      (async () => {
+        try {
+          // Try with no-cors mode first
+          const response = await fetch(request, { mode: 'no-cors' })
+          return response
+        } catch (error) {
+          console.log('[SW] External image failed, returning placeholder:', url.href)
+          // Return placeholder image
+          return new Response(
+            new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
+            { status: 200, headers: { 'Content-Type': 'image/gif' } }
+          )
+        }
+      })()
     )
     return
   }
@@ -431,4 +439,4 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-console.log('[SW] Loaded v6')
+console.log('[SW] Loaded v7')
