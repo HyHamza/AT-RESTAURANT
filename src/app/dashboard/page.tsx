@@ -67,32 +67,32 @@ export default function DashboardPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />
+        return <Clock className="h-4 w-4 text-pink-primary" />
       case 'preparing':
-        return <Package className="h-4 w-4 text-blue-600" />
+        return <Package className="h-4 w-4 text-pink-primary" />
       case 'ready':
         return <ShoppingBag className="h-4 w-4 text-green-600" />
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-700" />
+        return <CheckCircle className="h-4 w-4 text-green-600" />
       default:
-        return <Clock className="h-4 w-4 text-gray-600" />
+        return <Clock className="h-4 w-4 text-muted-text" />
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'text-yellow-600 bg-yellow-100'
+        return 'text-pink-primary bg-pink-light'
       case 'preparing':
-        return 'text-blue-600 bg-blue-100'
+        return 'text-pink-primary bg-pink-light'
       case 'ready':
-        return 'text-green-600 bg-green-100'
+        return 'text-green-600 bg-green-50'
       case 'completed':
-        return 'text-green-700 bg-green-200'
+        return 'text-green-600 bg-green-50'
       case 'cancelled':
-        return 'text-red-600 bg-red-100'
+        return 'text-red-600 bg-red-50'
       default:
-        return 'text-gray-600 bg-gray-100'
+        return 'text-muted-text bg-gray-light'
     }
   }
 
@@ -101,27 +101,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-white pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Dashboard</h1>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Welcome back, {user?.user_metadata?.full_name || user?.email}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">My Dashboard</h1>
+            <p className="text-muted-text mt-2 text-sm sm:text-base">Welcome back, {user?.user_metadata?.full_name || user?.email}</p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
             <Link href="/settings" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto h-12 text-base">
+              <Button variant="outline" className="w-full sm:w-auto btn-white-outline h-12 text-base">
                 <Settings className="h-5 w-5 mr-2" />
                 Settings
               </Button>
             </Link>
             <Link href="/menu" className="w-full sm:w-auto">
-              <Button className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto h-12 text-base">
+              <Button className="btn-pink-primary w-full sm:w-auto h-12 text-base">
                 Order Food
               </Button>
             </Link>
-            <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto h-12 text-base">
+            <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto btn-white-outline h-12 text-base">
               <LogOut className="h-5 w-5 mr-2" />
               Logout
             </Button>
@@ -131,9 +131,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* User Profile */}
           <div className="lg:col-span-1 order-2 lg:order-1">
-            <Card className="mb-6">
+            <Card className="mb-6 card-white">
               <CardHeader>
-                <CardTitle className="flex items-center text-lg">
+                <CardTitle className="flex items-center text-lg text-dark">
                   <User className="h-5 w-5 mr-2" />
                   Profile Information
                 </CardTitle>
@@ -141,12 +141,12 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-gray-900 mt-1">{user?.user_metadata?.full_name || 'Not provided'}</p>
+                    <label className="text-sm font-medium text-dark">Name</label>
+                    <p className="text-muted-text mt-1">{user?.user_metadata?.full_name || 'Not provided'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900 mt-1 break-all">{user?.email}</p>
+                    <label className="text-sm font-medium text-dark">Email</label>
+                    <p className="text-muted-text mt-1 break-all">{user?.email}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Phone</label>

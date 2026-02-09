@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./foodpanda-theme.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { CartProvider } from "@/contexts/cart-context";
 import { AdminProvider } from "@/contexts/admin-context";
+import { ToastProvider } from "@/components/ui/toast";
 import { PWAInstall } from "@/components/pwa-install";
 import { OfflineIndicator } from "@/components/offline-status";
 import { OfflineInit } from "@/components/offline-init";
@@ -25,7 +27,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#f97316",
+  themeColor: "#e11b70",
 };
 
 export default function RootLayout({
@@ -37,31 +39,33 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#f97316" />
+        <meta name="theme-color" content="#e11b70" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="AT RESTAURANT" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AdminProvider>
-          <CartProvider>
-            <OfflineInit />
-            
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            
-            {/* Simple offline indicator - only shows when offline */}
-            <OfflineIndicator />
-            
-            <PWAInstall />
-          </CartProvider>
-        </AdminProvider>
+        <ToastProvider>
+          <AdminProvider>
+            <CartProvider>
+              <OfflineInit />
+              
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+              </div>
+              
+              {/* Simple offline indicator - only shows when offline */}
+              <OfflineIndicator />
+              
+              <PWAInstall />
+            </CartProvider>
+          </AdminProvider>
+        </ToastProvider>
       </body>
     </html>
   );

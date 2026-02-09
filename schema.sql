@@ -477,37 +477,54 @@ SELECT
     (SELECT COUNT(*) FROM public.categories) as categories_created,
     (SELECT COUNT(*) FROM public.menu_items) as menu_items_created,
     'All tables, indexes, functions, and sample data have been created.' as info;
-
 -- ============================================================================
--- USAGE EXAMPLES
+-- SUPABASE STORAGE SETUP FOR MENU IMAGES
 -- ============================================================================
+-- Run this in your Supabase SQL Editor to set up image storage
+-- This will create a public bucket for menu item images
 
-/*
--- Example queries you can run after setup:
+-- Step 1: Create the storage bucket for menu images
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'menu-images',
+  'menu-images',
+  true,
+  5242880, -- 5MB limit per file
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
 
--- 1. View all menu items with categories
+-- Step 2: Create storage policies for public access
+
+-- Allow anyone to view/download images (public read)
+CREATE POLICY "Public Access - Anyone can view menu images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'menu-images');
+
+-- Allow authenticated users to upload images
+CREATE POLICY "Authenticated Upload - Users can upload menu images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'menu-images');
+
+-- Allow authenticated users to update images
+CREATE POLICY "Authenticated Update - Users can update menu images"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'menu-images');
+
+-- Allow authenticated users to delete images
+CREATE POLICY "Authenticated Delete - Users can delete menu images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'menu-images');
+
+-- Step 3: Verify the setup
 SELECT 
-    mi.name as item_name,
-    mi.price,
-    c.name as category_name,
-    mi.is_available
-FROM public.menu_items mi
-JOIN public.categories c ON mi.category_id = c.id
-WHERE mi.deleted_at IS NULL
-ORDER BY c.sort_order, mi.sort_order;
-
--- 2. Find nearby orders (example coordinates for Faisalabad, Pakistan)
-SELECT * FROM get_nearby_orders(31.4504, 73.1350, 10.0, 'pending');
-
--- 3. Get order count for a menu item
-SELECT get_menu_item_order_count('your-menu-item-id-here');
-
--- 4. Soft delete a menu item
-SELECT soft_delete_menu_item('your-menu-item-id-here');
-
--- 5. Make a user admin (replace with actual email)
-UPDATE public.users SET is_admin = TRUE WHERE email = 'your-email@example.com';
-
--- 6. View orders with location data
-SELECT * FROM public.orders_with_location WHERE delivery_latitude IS NOT NULL;
-*/
+  'Storage bucket created successfully!' as message,
+  id,
+  name,
+  public,
+  file_size_limit / 1024 / 1024 as max_file_size_mb
+FROM storage.buckets
+WHERE id = 'menu-images';

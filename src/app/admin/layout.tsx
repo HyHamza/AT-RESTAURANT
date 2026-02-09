@@ -149,15 +149,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 Login
               </Button>
             </form>
-            
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Demo Admin Credentials:</strong><br />
-                Email: admin@atrestaurant.com<br />
-                Password: admin123<br />
-                <em>Note: You'll need to set up Supabase authentication first.</em>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -170,7 +161,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Menu Management', href: '/admin/menu', icon: MenuIcon },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Customers', href: '/admin/customers', icon: Users },
-    { name: 'Test Notifications', href: '/admin/test-notifications', icon: Package },
   ]
 
   return (

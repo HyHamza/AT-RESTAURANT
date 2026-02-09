@@ -1,0 +1,414 @@
+/* ========================================
+   FOODPANDA-INSPIRED THEME
+   Clean Pink + White Design System
+   ======================================== */
+
+/* Primary Pink Buttons & CTAs */
+.btn-pink-primary {
+  background: #e11b70;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(225, 27, 112, 0.2);
+}
+
+.btn-pink-primary:hover {
+  background: #c91660;
+  box-shadow: 0 4px 12px rgba(225, 27, 112, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-pink-primary:active {
+  transform: translateY(0);
+}
+
+/* White/Outline Buttons */
+.btn-white-outline {
+  background: #ffffff;
+  color: #e11b70;
+  border: 2px solid #e11b70;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-white-outline:hover {
+  background: #e11b70;
+  color: #ffffff;
+}
+
+/* Clean White Cards */
+.card-white {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #f5f5f5;
+}
+
+.card-white:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Pink Accent Card */
+.card-pink-accent {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(225, 27, 112, 0.1);
+  border: 2px solid #e11b70;
+  transition: all 0.3s ease;
+}
+
+/* Light Pink Background Sections */
+.section-pink-light {
+  background: #fef5f9;
+}
+
+.section-white {
+  background: #ffffff;
+}
+
+.section-gray-light {
+  background: #f9f9f9;
+}
+
+/* Pink Gradient Backgrounds */
+.bg-pink-gradient {
+  background: linear-gradient(135deg, #e11b70 0%, #ff4d94 100%);
+}
+
+.bg-pink-gradient-soft {
+  background: linear-gradient(135deg, #fef5f9 0%, #ffffff 100%);
+}
+
+/* Text Colors */
+.text-pink-primary {
+  color: #e11b70;
+}
+
+.text-dark {
+  color: #353535;
+}
+
+.text-muted-dark {
+  color: #51323f;
+}
+
+/* Pink Text Gradient */
+.text-pink-gradient {
+  background: linear-gradient(135deg, #e11b70 0%, #ff4d94 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Clean Input Fields */
+.input-clean {
+  background: #ffffff;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  color: #353535;
+  transition: all 0.2s ease;
+  padding: 12px 16px;
+}
+
+.input-clean:focus {
+  border-color: #e11b70;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(225, 27, 112, 0.1);
+}
+
+.input-clean::placeholder {
+  color: #999;
+}
+
+/* Pink Badge */
+.badge-pink {
+  background: #e11b70;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-white {
+  background: #ffffff;
+  color: #e11b70;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #e11b70;
+}
+
+/* Pink Divider */
+.divider-pink {
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #e11b70 50%, transparent 100%);
+}
+
+.divider-light {
+  height: 1px;
+  background: #f0f0f0;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Pink Icon Container */
+.icon-pink {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #e11b70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(225, 27, 112, 0.2);
+}
+
+.icon-pink-light {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #fef5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Clean Shadows */
+.shadow-clean {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-clean-lg {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-pink {
+  box-shadow: 0 4px 16px rgba(225, 27, 112, 0.2);
+}
+
+/* Pink Shimmer Loading */
+.shimmer-pink {
+  background: linear-gradient(
+    90deg,
+    #f9f9f9 0%,
+    #fef5f9 50%,
+    #f9f9f9 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Pink Spinner */
+.spinner-pink {
+  border: 3px solid #f0f0f0;
+  border-top-color: #e11b70;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Clean Typography */
+.heading-clean {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #353535;
+}
+
+.subheading-clean {
+  font-weight: 600;
+  color: #51323f;
+}
+
+/* Pink Link Hover */
+.link-pink {
+  color: #353535;
+  transition: color 0.2s ease;
+}
+
+.link-pink:hover {
+  color: #e11b70;
+}
+
+/* Clean Toast Notifications */
+.toast-clean {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #f0f0f0;
+  padding: 16px;
+}
+
+.toast-success {
+  border-left: 4px solid #10b981;
+}
+
+.toast-error {
+  border-left: 4px solid #ef4444;
+}
+
+.toast-info {
+  border-left: 4px solid #e11b70;
+}
+
+/* Pink Progress Bar */
+.progress-pink {
+  background: #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-pink-fill {
+  background: #e11b70;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Clean Menu Item Card */
+.menu-card {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #f5f5f5;
+}
+
+.menu-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.menu-card-image {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #f9f9f9;
+}
+
+.menu-card-image img {
+  transition: transform 0.3s ease;
+}
+
+.menu-card:hover .menu-card-image img {
+  transform: scale(1.05);
+}
+
+/* Pink Overlay for Hero */
+.hero-overlay-pink {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(254, 245, 249, 0.9) 100%
+  );
+}
+
+/* Clean Header */
+.header-clean {
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Pink Focus Ring */
+.focus-pink:focus-visible {
+  outline: 2px solid #e11b70;
+  outline-offset: 2px;
+}
+
+/* Smooth Transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pink Dot Indicator */
+.dot-pink {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e11b70;
+}
+
+/* Clean Scrollbar */
+.scrollbar-clean::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-clean::-webkit-scrollbar-track {
+  background: #f9f9f9;
+}
+
+.scrollbar-clean::-webkit-scrollbar-thumb {
+  background: #e11b70;
+  border-radius: 4px;
+}
+
+.scrollbar-clean::-webkit-scrollbar-thumb:hover {
+  background: #c91660;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .card-white:hover {
+    transform: translateY(-1px);
+  }
+  
+  .menu-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

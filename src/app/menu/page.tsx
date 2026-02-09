@@ -9,7 +9,8 @@ import { useCart } from '@/contexts/cart-context'
 import { formatPrice } from '@/lib/utils'
 import { offlineUtils } from '@/lib/offline-db'
 import { supabase } from '@/lib/supabase'
-import { Search, Plus, Minus, Wifi, WifiOff, AlertCircle } from 'lucide-react'
+import { useToastHelpers } from '@/components/ui/toast'
+import { Search, Plus, Minus, AlertCircle, Heart } from 'lucide-react'
 import type { Category, MenuItem } from '@/types'
 import { MenuSkeleton } from '@/components/skeletons/menu-skeleton'
 
@@ -21,10 +22,11 @@ export default function MenuPage() {
   const [isOnline, setIsOnline] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [addingToCart, setAddingToCart] = useState<string | null>(null)
   const { addItem, items: cartItems, updateQuantity } = useCart()
+  const toast = useToastHelpers()
 
   useEffect(() => {
-    // Check online status
     setIsOnline(navigator.onLine)
     
     const handleOnline = () => setIsOnline(true)
@@ -44,26 +46,18 @@ export default function MenuPage() {
   }, [isOnline])
 
   const logError = (context: string, error: any) => {
-    const errorMessage = `[AT RESTAURANT - ${context}] ${error?.message || error?.toString() || 'Unknown error'}`
+    const timestamp = new Date().toISOString()
+    const errorMessage = `[AT RESTAURANT - ${context}] ${timestamp} - ${error?.message || error?.toString() || 'Unknown error'}`
     console.error(errorMessage)
     
-    if (error?.details) {
-      console.error(`[AT RESTAURANT - ${context}] Error details:`, error.details)
-    }
-    
-    if (error?.hint) {
-      console.error(`[AT RESTAURANT - ${context}] Error hint:`, error.hint)
-    }
-    
-    if (error?.code) {
-      console.error(`[AT RESTAURANT - ${context}] Error code:`, error.code)
-    }
+    if (error?.details) console.error(`[AT RESTAURANT - ${context}] Error details:`, error.details)
+    if (error?.hint) console.error(`[AT RESTAURANT - ${context}] Error hint:`, error.hint)
+    if (error?.code) console.error(`[AT RESTAURANT - ${context}] Error code:`, error.code)
     
     return errorMessage
   }
 
   const checkSupabaseConnection = async () => {
-    // Check environment variables
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     
@@ -71,14 +65,9 @@ export default function MenuPage() {
       throw new Error('Supabase environment variables are not configured. Please check your .env.local file.')
     }
     
-    // Test connection with a simple query
     try {
       const { data, error } = await supabase.from('categories').select('count').limit(1)
-      
-      if (error) {
-        throw error
-      }
-      
+      if (error) throw error
       return true
     } catch (error) {
       throw error
@@ -90,7 +79,6 @@ export default function MenuPage() {
     setError(null)
     
     try {
-      // Always try to load cached data first for instant offline access
       const hasCached = await offlineUtils.hasCachedData()
       
       if (hasCached) {
@@ -105,7 +93,6 @@ export default function MenuPage() {
           
           setLoading(false)
           
-          // If online, update cache in background
           if (isOnline) {
             updateCacheInBackground()
           }
@@ -114,12 +101,10 @@ export default function MenuPage() {
         }
       }
       
-      // If no cached data and offline, show error
       if (!isOnline) {
         throw new Error('No cached data available and device is offline. Please connect to internet and refresh.')
       }
 
-      // If online and no cache, fetch from server
       await fetchFromServer()
 
     } catch (error: any) {
@@ -131,7 +116,6 @@ export default function MenuPage() {
   }
 
   const fetchFromServer = async () => {
-    // Check Supabase connection first
     await checkSupabaseConnection()
 
     const categoriesResponse = await supabase
@@ -168,7 +152,6 @@ export default function MenuPage() {
     setCategories(categoriesResponse.data)
     setMenuItems(menuItemsResponse.data)
     
-    // Cache the data for offline use
     try {
       await offlineUtils.cacheMenuData(
         categoriesResponse.data,
@@ -179,7 +162,7 @@ export default function MenuPage() {
         }))
       )
     } catch (cacheError) {
-      // Cache failed, but continue with loaded data
+      console.warn('[AT RESTAURANT - Menu] Failed to cache data:', cacheError)
     }
   }
 
@@ -187,7 +170,7 @@ export default function MenuPage() {
     try {
       await fetchFromServer()
     } catch (error) {
-      // Don't show error to user for background updates
+      console.warn('[AT RESTAURANT - Menu] Background cache update failed:', error)
     }
   }
 
@@ -203,17 +186,37 @@ export default function MenuPage() {
     return cartItem?.quantity || 0
   }
 
-  const handleAddToCart = (item: MenuItem) => {
-    addItem({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      image_url: item.image_url
-    })
+  const handleAddToCart = async (item: MenuItem) => {
+    setAddingToCart(item.id)
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      addItem({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image_url: item.image_url
+      })
+      
+      toast.success('Added to cart!', `${item.name} has been added to your cart`)
+      console.log(`[AT RESTAURANT - Cart] Successfully added ${item.name} to cart`)
+    } catch (error: any) {
+      console.error(`[AT RESTAURANT - Cart] Failed to add ${item.name} to cart:`, error)
+      toast.error('Failed to add item', 'Unable to add item to cart. Please try again.')
+    } finally {
+      setAddingToCart(null)
+    }
   }
 
-  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
-    updateQuantity(itemId, newQuantity)
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    try {
+      updateQuantity(itemId, newQuantity)
+      console.log(`[AT RESTAURANT - Cart] Updated quantity for item ${itemId} to ${newQuantity}`)
+    } catch (error: any) {
+      console.error(`[AT RESTAURANT - Cart] Failed to update quantity:`, error)
+      toast.error('Failed to update quantity', 'Unable to update item quantity. Please try again.')
+    }
   }
 
   if (loading) {
@@ -222,23 +225,25 @@ export default function MenuPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full">
-          <Card className="border-red-200">
+      <div className="min-h-screen flex items-center justify-center bg-white pt-16">
+        <div className="max-w-md w-full px-4">
+          <Card className="card-white border-destructive/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Menu</h2>
-                <p className="text-gray-600 mb-4 text-sm">
+                <div className="icon-pink-light mx-auto mb-4 bg-red-50">
+                  <AlertCircle className="h-6 w-6 text-destructive" />
+                </div>
+                <h2 className="text-xl font-semibold text-dark mb-2">Unable to Load Menu</h2>
+                <p className="text-muted-text mb-4 text-sm">
                   {isOnline ? 'Unable to load menu data from server.' : 'Menu data is not available without an internet connection.'}
                 </p>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <p className="text-red-800 text-sm font-mono break-all">
+                  <p className="text-destructive text-sm font-mono break-all">
                     {error}
                   </p>
                 </div>
-                <div className="space-y-2 text-left text-sm text-gray-600 mb-6">
-                  <p><strong>Troubleshooting steps:</strong></p>
+                <div className="space-y-2 text-left text-sm text-muted-text mb-6">
+                  <p className="text-dark font-medium">What you can do:</p>
                   <ol className="list-decimal list-inside space-y-1">
                     {isOnline ? (
                       <>
@@ -257,7 +262,7 @@ export default function MenuPage() {
                 </div>
                 <Button 
                   onClick={() => window.location.reload()} 
-                  className="w-full bg-orange-500 hover:bg-orange-600"
+                  className="w-full btn-pink-primary"
                 >
                   Try Again
                 </Button>
@@ -270,27 +275,31 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-white pt-16">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-gray-light border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Menu</h1>
-              <p className="text-gray-600 mt-1">Discover our delicious offerings</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">Our Menu</h1>
+              <p className="text-muted-text mt-1">Discover our delicious offerings</p>
             </div>
-           
+            {!isOnline && (
+              <div className="bg-white rounded-lg px-3 py-2 border border-pink-primary/20">
+                <p className="text-pink-primary text-sm font-medium">Offline Mode</p>
+              </div>
+            )}
           </div>
           
-          {/* Search - Mobile optimized */}
+          {/* Search */}
           <div className="mt-6">
             <div className="relative max-w-md">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-text h-5 w-5" />
               <Input
                 placeholder="Search menu items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                className="input-clean pl-12 h-12 text-base rounded-xl"
               />
             </div>
           </div>
@@ -303,13 +312,13 @@ export default function MenuPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Selected Category Title */}
             <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-dark">
                 {selectedCategory === 'all' 
                   ? 'All Items' 
                   : categories.find(cat => cat.id === selectedCategory)?.name || 'Menu Items'
                 }
               </h2>
-              <p className="text-gray-600 text-sm mt-1">
+              <p className="text-muted-text text-sm mt-1">
                 {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} available
               </p>
             </div>
@@ -317,11 +326,29 @@ export default function MenuPage() {
             {/* Menu Items Grid */}
             {filteredItems.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
-                {searchQuery && (
-                  <p className="text-gray-400 text-sm mt-2">
-                    Try adjusting your search or selecting a different category.
-                  </p>
+                <div className="icon-pink-light mx-auto mb-4">
+                  <Search className="h-8 w-8 text-pink-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-dark mb-2">No items found</h3>
+                <p className="text-muted-text mb-6">
+                  {searchQuery 
+                    ? `No menu items match "${searchQuery}". Try adjusting your search or selecting a different category.`
+                    : selectedCategory !== 'all' 
+                      ? `No items available in the selected category.`
+                      : 'No menu items are currently available.'
+                  }
+                </p>
+                {(searchQuery || selectedCategory !== 'all') && (
+                  <Button 
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSelectedCategory('all')
+                    }}
+                    variant="outline"
+                    className="btn-white-outline"
+                  >
+                    Clear Filters
+                  </Button>
                 )}
               </div>
             ) : (
@@ -330,33 +357,38 @@ export default function MenuPage() {
                   const quantity = getCartItemQuantity(item.id)
                   
                   return (
-                    <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
-                      <div className="relative h-48 bg-gray-100 overflow-hidden">
+                    <Card key={item.id} className="menu-card group">
+                      <div className="menu-card-image">
                         {item.image_url ? (
-                          <ImageWithModal
-                            src={item.image_url}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          />
+                          <>
+                            <ImageWithModal
+                              src={item.image_url}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                            <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-clean">
+                              <Heart className="h-4 w-4 text-pink-primary hover:fill-pink-primary" />
+                            </button>
+                            {item.category && (
+                              <div className="absolute top-3 left-3 badge-pink z-10">
+                                {item.category.name}
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                            <span className="text-gray-600 font-medium">No Image</span>
-                          </div>
-                        )}
-                        {item.category && (
-                          <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium z-10">
-                            {item.category.name}
+                          <div className="h-full bg-gray-light flex items-center justify-center">
+                            <span className="text-muted-text font-medium">No Image</span>
                           </div>
                         )}
                       </div>
                       <CardContent className="p-6">
                         <div className="mb-4">
-                          <h3 className="text-xl font-semibold mb-2 line-clamp-1">{item.name}</h3>
-                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                          <h3 className="text-xl font-semibold text-dark mb-2 line-clamp-1">{item.name}</h3>
+                          <p className="text-muted-text text-sm mb-3 line-clamp-2">{item.description}</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-2xl font-bold text-orange-500">
+                            <span className="text-2xl font-bold text-pink-primary">
                               {formatPrice(item.price)}
                             </span>
                           </div>
@@ -365,10 +397,20 @@ export default function MenuPage() {
                         {quantity === 0 ? (
                           <Button
                             onClick={() => handleAddToCart(item)}
-                            className="w-full bg-orange-500 hover:bg-orange-600 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+                            disabled={addingToCart === item.id}
+                            className="w-full btn-pink-primary rounded-lg font-medium disabled:opacity-50"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add to Cart
+                            {addingToCart === item.id ? (
+                              <div className="flex items-center justify-center">
+                                <div className="spinner-pink h-4 w-4 mr-2"></div>
+                                Adding...
+                              </div>
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add to Cart
+                              </>
+                            )}
                           </Button>
                         ) : (
                           <div className="flex items-center justify-between">
@@ -377,21 +419,21 @@ export default function MenuPage() {
                                 size="icon"
                                 variant="outline"
                                 onClick={() => handleUpdateQuantity(item.id, quantity - 1)}
-                                className="rounded-lg hover:bg-red-50 hover:border-red-200"
+                                className="rounded-lg hover:bg-red-50 hover:border-red-200 border-border"
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
-                              <span className="font-semibold text-lg min-w-[2rem] text-center">{quantity}</span>
+                              <span className="font-semibold text-lg min-w-[2rem] text-center text-dark">{quantity}</span>
                               <Button
                                 size="icon"
                                 variant="outline"
                                 onClick={() => handleUpdateQuantity(item.id, quantity + 1)}
-                                className="rounded-lg hover:bg-green-50 hover:border-green-200"
+                                className="rounded-lg hover:bg-pink-light hover:border-pink-primary/20 border-border"
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
                             </div>
-                            <span className="text-sm text-gray-600 font-medium">
+                            <span className="text-sm text-muted-text font-medium">
                               {formatPrice(item.price * quantity)}
                             </span>
                           </div>
@@ -405,17 +447,16 @@ export default function MenuPage() {
           </div>
         </div>
 
-        {/* RIGHT Sidebar - Emoji Filters (All screen sizes) - Responsive with scrolling */}
-        <div className="fixed right-0 top-16 h-full bg-gray-900 w-12 sm:w-16 z-10 flex flex-col items-center py-4 sm:py-6 overflow-y-auto sidebar-scroll">
-          {/* Scrollable container for filters */}
+        {/* RIGHT Sidebar - Emoji Filters */}
+        <div className="fixed right-0 top-16 h-full bg-gray-light w-12 sm:w-16 z-10 flex flex-col items-center py-4 sm:py-6 overflow-y-auto scrollbar-clean border-l border-border">
           <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
             {/* All Categories */}
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+              className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-smooth ${
                 selectedCategory === 'all'
-                  ? 'bg-orange-500 shadow-lg'
-                  : 'bg-gray-700 hover:bg-gray-600'
+                  ? 'bg-pink-gradient shadow-pink'
+                  : 'bg-white hover:bg-pink-light border border-border'
               }`}
               title="All Items"
             >
@@ -425,13 +466,11 @@ export default function MenuPage() {
             {/* Dynamic Categories with Emojis */}
             {categories.map((category) => {
               const getEmojiForCategory = (category: Category) => {
-                // First, check if category has an emoji field from database
                 if (category.emoji) return category.emoji
                 
-                // Otherwise, use smart mapping based on name
                 const lowerName = category.name.toLowerCase()
                 if (lowerName.includes('pizza')) return '🍕'
-                if (lowerName.includes('burger')) return '�'
+                if (lowerName.includes('burger')) return '🍔'
                 if (lowerName.includes('chicken') || lowerName.includes('meat')) return '🍗'
                 if (lowerName.includes('sandwich') || lowerName.includes('sub')) return '🥪'
                 if (lowerName.includes('salad')) return '🥗'
@@ -452,10 +491,10 @@ export default function MenuPage() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-all duration-200 ${
+                  className={`w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center text-lg sm:text-2xl transition-smooth ${
                     selectedCategory === category.id
-                      ? 'bg-orange-500 shadow-lg'
-                      : 'bg-gray-700 hover:bg-gray-600'
+                      ? 'bg-pink-gradient shadow-pink'
+                      : 'bg-white hover:bg-pink-light border border-border'
                   }`}
                   title={category.name}
                 >
@@ -467,8 +506,8 @@ export default function MenuPage() {
           
           {/* Scroll indicator for mobile */}
           <div className="sm:hidden mt-2 flex flex-col items-center space-y-1">
-            <div className="w-1 h-8 bg-gray-600 rounded-full opacity-50"></div>
-            <div className="text-gray-400 text-xs rotate-90 whitespace-nowrap">Scroll</div>
+            <div className="w-1 h-8 bg-border rounded-full opacity-50"></div>
+            <div className="text-muted-text text-xs rotate-90 whitespace-nowrap">Scroll</div>
           </div>
         </div>
       </div>

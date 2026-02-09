@@ -48,15 +48,23 @@ export default function AdminOrdersPage() {
 
   const loadOrders = async () => {
     try {
+      console.log('[AT RESTAURANT - Admin Orders] Loading orders...')
+      
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to load orders:', error)
+        throw error
+      }
+      
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully loaded ${data?.length || 0} orders`)
       setOrders(data || [])
-    } catch (error) {
-      console.error('Error loading orders:', error)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Load orders error:', error)
+      alert(`Failed to load orders: ${error.message || 'Unknown error'}. Please refresh the page.`)
     } finally {
       setLoading(false)
     }
@@ -64,6 +72,8 @@ export default function AdminOrdersPage() {
 
   const loadOrderItems = async (orderId: string) => {
     try {
+      console.log(`[AT RESTAURANT - Admin Orders] Loading items for order ${orderId}`)
+      
       const { data, error } = await supabase
         .from('order_items')
         .select(`
@@ -72,10 +82,16 @@ export default function AdminOrdersPage() {
         `)
         .eq('order_id', orderId)
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to load order items:', error)
+        throw error
+      }
+      
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully loaded ${data?.length || 0} items for order ${orderId}`)
       setOrderItems(data || [])
-    } catch (error) {
-      console.error('Error loading order items:', error)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Load order items error:', error)
+      alert(`Failed to load order items: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -93,6 +109,8 @@ export default function AdminOrdersPage() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      console.log(`[AT RESTAURANT - Admin Orders] Updating order ${orderId} status to ${newStatus}`)
+      
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -101,16 +119,24 @@ export default function AdminOrdersPage() {
         })
         .eq('id', orderId)
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to update order status:', error)
+        throw error
+      }
 
       // Add status log
-      await supabase
+      const { error: logError } = await supabase
         .from('order_status_logs')
         .insert({
           order_id: orderId,
           status: newStatus,
           notes: `Status updated to ${newStatus} by admin`
         })
+
+      if (logError) {
+        console.warn('[AT RESTAURANT - Admin Orders] Failed to add status log:', logError)
+        // Don't throw here as the main update succeeded
+      }
 
       // Update local state
       setOrders(prev => prev.map(order => 
@@ -122,9 +148,14 @@ export default function AdminOrdersPage() {
       if (selectedOrder?.id === orderId) {
         setSelectedOrder(prev => prev ? { ...prev, status: newStatus as any } : null)
       }
-    } catch (error) {
-      console.error('Error updating order status:', error)
-      alert('Failed to update order status')
+
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully updated order ${orderId} to ${newStatus}`)
+      
+      // Show success feedback
+      alert(`Order #${orderId} status updated to ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Update status error:', error)
+      alert(`Failed to update order status: ${error.message || 'Unknown error'}. Please try again.`)
     }
   }
 

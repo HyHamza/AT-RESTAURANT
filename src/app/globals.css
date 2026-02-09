@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 :root {
+  /* Foodpanda-Inspired Pink + White Theme */
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 0 0% 21%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 0 0% 21%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 24.6 95% 53.1%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 84% 4.9%;
+  --popover-foreground: 0 0% 21%;
+  
+  /* Primary Pink #e11b70 */
+  --primary: 337 80% 50%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Dark Text #353535 */
+  --secondary: 0 0% 21%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted Accent #51323f */
+  --muted: 0 0% 97%;
+  --muted-foreground: 330 23% 26%;
+  
+  /* Light Pink Accent */
+  --accent: 337 100% 98%;
+  --accent-foreground: 337 80% 50%;
+  
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 24.6 95% 53.1%;
-  --radius: 0.5rem;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Clean Borders */
+  --border: 0 0% 93%;
+  --input: 0 0% 93%;
+  --ring: 337 80% 50%;
+  --radius: 0.75rem;
+  
+  /* Foodpanda Pink Colors */
+  --pink-primary: 337 80% 50%;
+  --pink-hover: 337 80% 45%;
+  --pink-light: 337 100% 98%;
+  --dark-text: 0 0% 21%;
+  --muted-text: 330 23% 26%;
+  --gray-light: 0 0% 97%;
 }
 
 @theme inline {
@@ -44,6 +70,14 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --font-sans: var(--font-inter);
+  
+  /* Foodpanda Pink Colors */
+  --color-pink-primary: hsl(var(--pink-primary));
+  --color-pink-hover: hsl(var(--pink-hover));
+  --color-pink-light: hsl(var(--pink-light));
+  --color-dark-text: hsl(var(--dark-text));
+  --color-muted-text: hsl(var(--muted-text));
+  --color-gray-light: hsl(var(--gray-light));
 }
 
 * {
@@ -56,23 +90,22 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Modern scrollbar */
+/* Clean White Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: #f9f9f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground));
-  border-radius: 4px;
+  background: #e11b70;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
+  background: #c91660;
 }
 
 /* Smooth animations */
@@ -110,54 +143,12 @@ body {
   outline-offset: 2px;
 }
 
-/* Enhanced button hover effects */
-.btn-hover-lift:hover {
-  transform: translateY(-2px);
-}
-
-/* Card hover effects */
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-/* Gradient text */
+/* Pink gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #f97316, #dc2626);
+  background: linear-gradient(135deg, #e11b70, #ff4d94);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-/* Admin notification animations */
-@keyframes slideInFromRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-
-/* Modern backdrop blur support */
-@supports (backdrop-filter: blur(10px)) {
-  .backdrop-blur-modern {
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
 }
 
 /* Enhanced mobile touch targets */
@@ -186,137 +177,57 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Modern glass morphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Enhanced loading states */
-.loading-shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Button overrides for better visibility */
-.btn-hero-primary {
-  background-color: white !important;
-  color: #dc2626 !important;
-  border: none !important;
-}
-
-.btn-hero-primary:hover {
-  background-color: #f3f4f6 !important;
-  color: #dc2626 !important;
-}
-
-.btn-hero-secondary {
-  background-color: transparent !important;
-  color: white !important;
-  border: 2px solid white !important;
-}
-
-.btn-hero-secondary:hover {
-  background-color: white !important;
-  color: #dc2626 !important;
-  border: 2px solid white !important;
-}
-
-/* Ensure header elements are visible */
-.header-transparent .text-white {
-  color: white !important;
-}
-
-.header-transparent .border-white {
-  border-color: white !important;
-}
-
-/* Enhanced image hover effects */
-.image-hover-zoom {
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.image-hover-zoom:hover {
-  transform: scale(1.1);
-}
-
-/* Modal backdrop blur */
-.modal-backdrop {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Smooth zoom animation */
-@keyframes zoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.zoom-in {
-  animation: zoomIn 0.3s ease-out;
-}
-
-/* Image overlay effects */
-.image-overlay {
-  background: linear-gradient(
-    45deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 50%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
-/* Card hover lift effect */
-.card-lift:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
 /* Hide scrollbar utility */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .scrollbar-hide::-webkit-scrollbar { 
-  display: none;  /* Safari and Chrome */
-}
-/* Custom scrollbar for sidebar */
-.sidebar-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  display: none;
 }
 
-.sidebar-scroll::-webkit-scrollbar {
-  width: 4px;
+/* Video background optimizations */
+video {
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
 
-.sidebar-scroll::-webkit-scrollbar-track {
-  background: transparent;
+.video-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 2px;
+/* Smooth fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
+.fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Optimize for mobile devices */
+@media (max-width: 768px) {
+  video {
+    filter: blur(2px) !important;
+  }
 }

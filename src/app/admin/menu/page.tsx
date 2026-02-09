@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
+import { uploadMenuImage, deleteMenuImage, validateImageFile, isSupabaseStorageUrl } from '@/lib/storage'
+import { useToastHelpers } from '@/components/ui/toast'
 import { 
   Search, 
   Plus, 
@@ -17,7 +19,8 @@ import {
   X,
   Upload,
   Tag,
-  DollarSign
+  DollarSign,
+  Image as ImageIcon
 } from 'lucide-react'
 
 interface Category {
@@ -51,6 +54,10 @@ export default function AdminMenuPage() {
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const toast = useToastHelpers()
 
   // Form states
   const [itemForm, setItemForm] = useState({
@@ -108,26 +115,96 @@ export default function AdminMenuPage() {
     }
   }
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      toast.error('Invalid image file', validationError)
+      return
+    }
+
+    setImageFile(file)
+    
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const clearImageSelection = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setItemForm(prev => ({ ...prev, image_url: '' }))
+  }
+
+  const handleImageUpload = async (): Promise<string | null> => {
+    if (!imageFile) return itemForm.image_url || null
+
+    setUploadingImage(true)
+    try {
+      const imageUrl = await uploadMenuImage(imageFile)
+      console.log('[Admin Menu] Image uploaded successfully:', imageUrl)
+      return imageUrl
+    } catch (error: any) {
+      console.error('[Admin Menu] Image upload failed:', error)
+      toast.error('Upload failed', error.message || 'Failed to upload image. Please try again.')
+      return null
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   const handleAddItem = async () => {
     if (!itemForm.name || !itemForm.price || !itemForm.category_id) {
-      alert('Please fill in all required fields')
+      toast.warning('Missing required fields', 'Please fill in Name, Price, and Category')
+      return
+    }
+
+    const price = parseFloat(itemForm.price)
+    if (isNaN(price) || price <= 0) {
+      toast.warning('Invalid price', 'Please enter a valid price greater than 0')
       return
     }
 
     try {
+      console.log('[AT RESTAURANT - Admin Menu] Adding new menu item:', itemForm.name)
+      
+      // Upload image if selected
+      let imageUrl = itemForm.image_url
+      if (imageFile) {
+        const uploadedUrl = await handleImageUpload()
+        if (!uploadedUrl) {
+          // Upload failed, user was already alerted
+          return
+        }
+        imageUrl = uploadedUrl
+      }
+      
       const { error } = await supabase
         .from('menu_items')
         .insert({
           name: itemForm.name,
           description: itemForm.description || null,
-          price: parseFloat(itemForm.price),
+          price: price,
           category_id: itemForm.category_id,
-          image_url: itemForm.image_url || null,
+          image_url: imageUrl || null,
           is_available: itemForm.is_available
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Menu] Failed to add menu item:', error)
+        throw error
+      }
 
+      console.log('[AT RESTAURANT - Admin Menu] Successfully added menu item:', itemForm.name)
+      
+      toast.success('Menu item added!', `${itemForm.name} has been added to the menu`)
+      
       setShowAddItem(false)
       setItemForm({
         name: '',
@@ -137,39 +214,73 @@ export default function AdminMenuPage() {
         image_url: '',
         is_available: true
       })
+      clearImageSelection()
       await loadData()
     } catch (error: any) {
-      console.error('Failed to add menu item:', error)
-      alert(`Failed to add menu item: ${error.message}`)
+      console.error('[AT RESTAURANT - Admin Menu] Add item error:', error)
+      toast.error('Failed to add item', error.message || 'Unable to add menu item. Please try again.')
     }
   }
 
   const handleUpdateItem = async () => {
     if (!editingItem || !itemForm.name || !itemForm.price || !itemForm.category_id) {
-      alert('Please fill in all required fields')
+      toast.warning('Missing required fields', 'Please fill in Name, Price, and Category')
+      return
+    }
+
+    const price = parseFloat(itemForm.price)
+    if (isNaN(price) || price <= 0) {
+      toast.warning('Invalid price', 'Please enter a valid price greater than 0')
       return
     }
 
     try {
+      console.log('[AT RESTAURANT - Admin Menu] Updating menu item:', editingItem.name)
+      
+      // Upload new image if selected
+      let imageUrl = itemForm.image_url
+      if (imageFile) {
+        const uploadedUrl = await handleImageUpload()
+        if (!uploadedUrl) {
+          // Upload failed, user was already alerted
+          return
+        }
+        
+        // Delete old image if it was from Supabase Storage
+        if (editingItem.image_url && isSupabaseStorageUrl(editingItem.image_url)) {
+          await deleteMenuImage(editingItem.image_url)
+        }
+        
+        imageUrl = uploadedUrl
+      }
+      
       const { error } = await supabase
         .from('menu_items')
         .update({
           name: itemForm.name,
           description: itemForm.description || null,
-          price: parseFloat(itemForm.price),
+          price: price,
           category_id: itemForm.category_id,
-          image_url: itemForm.image_url || null,
+          image_url: imageUrl || null,
           is_available: itemForm.is_available
         })
         .eq('id', editingItem.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Menu] Failed to update menu item:', error)
+        throw error
+      }
 
+      console.log('[AT RESTAURANT - Admin Menu] Successfully updated menu item:', itemForm.name)
+      
+      toast.success('Menu item updated!', `${itemForm.name} has been updated successfully`)
+      
       setEditingItem(null)
+      clearImageSelection()
       await loadData()
     } catch (error: any) {
-      console.error('Failed to update menu item:', error)
-      alert(`Failed to update menu item: ${error.message}`)
+      console.error('[AT RESTAURANT - Admin Menu] Update item error:', error)
+      toast.error('Failed to update item', error.message || 'Unable to update menu item. Please try again.')
     }
   }
 
@@ -186,7 +297,7 @@ export default function AdminMenuPage() {
 
       if (checkError) {
         console.error('Failed to check for existing orders:', checkError)
-        alert('Failed to check for existing orders')
+        toast.error('Check failed', 'Unable to verify if item can be deleted')
         return
       }
 
@@ -202,14 +313,12 @@ export default function AdminMenuPage() {
             .from('menu_items')
             .update({ 
               is_available: false,
-              // If you have a deleted_at column, uncomment the next line:
-              // deleted_at: new Date().toISOString()
             })
             .eq('id', itemId)
 
           if (error) throw error
 
-          alert('Menu item has been hidden and is no longer available for ordering')
+          toast.success('Item hidden', 'Menu item is no longer available for ordering')
           await loadData()
         }
         return
@@ -223,40 +332,50 @@ export default function AdminMenuPage() {
 
       if (error) throw error
 
+      toast.success('Item deleted', 'Menu item has been permanently removed')
       await loadData()
     } catch (error: any) {
       console.error('Failed to delete menu item:', error)
       
       // Handle specific foreign key constraint error
       if (error.message.includes('foreign key constraint') || error.message.includes('violates')) {
-        alert(
-          'Cannot delete this menu item because it has existing orders. ' +
-          'You can hide it instead by clicking the "Hide" button to make it unavailable for new orders.'
+        toast.error(
+          'Cannot delete item',
+          'This item has existing orders. Use the "Hide" button instead to make it unavailable.'
         )
       } else {
-        alert(`Failed to delete menu item: ${error.message}`)
+        toast.error('Delete failed', error.message || 'Unable to delete menu item')
       }
     }
   }
 
   const handleAddCategory = async () => {
-    if (!categoryForm.name) {
-      alert('Please enter a category name')
+    if (!categoryForm.name.trim()) {
+      toast.warning('Category name required', 'Please enter a name for the category')
       return
     }
 
     try {
+      console.log('[AT RESTAURANT - Admin Menu] Adding new category:', categoryForm.name)
+      
       const { error } = await supabase
         .from('categories')
         .insert({
-          name: categoryForm.name,
-          description: categoryForm.description || null,
-          emoji: categoryForm.emoji || null,
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim() || null,
+          emoji: categoryForm.emoji.trim() || null,
           is_active: categoryForm.is_active
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Menu] Failed to add category:', error)
+        throw error
+      }
 
+      console.log('[AT RESTAURANT - Admin Menu] Successfully added category:', categoryForm.name)
+      
+      toast.success('Category added!', `${categoryForm.name} has been added successfully`)
+      
       setShowAddCategory(false)
       setCategoryForm({
         name: '',
@@ -266,14 +385,14 @@ export default function AdminMenuPage() {
       })
       await loadData()
     } catch (error: any) {
-      console.error('Failed to add category:', error)
-      alert(`Failed to add category: ${error.message}`)
+      console.error('[AT RESTAURANT - Admin Menu] Add category error:', error)
+      toast.error('Failed to add category', error.message || 'Unable to add category. Please try again.')
     }
   }
 
   const handleUpdateCategory = async () => {
     if (!editingCategory || !categoryForm.name) {
-      alert('Please enter a category name')
+      toast.warning('Category name required', 'Please enter a name for the category')
       return
     }
 
@@ -290,11 +409,13 @@ export default function AdminMenuPage() {
 
       if (error) throw error
 
+      toast.success('Category updated!', `${categoryForm.name} has been updated successfully`)
+      
       setEditingCategory(null)
       await loadData()
     } catch (error: any) {
       console.error('Failed to update category:', error)
-      alert(`Failed to update category: ${error.message}`)
+      toast.error('Update failed', error.message || 'Unable to update category')
     }
   }
 
@@ -310,7 +431,7 @@ export default function AdminMenuPage() {
 
       if (checkError) {
         console.error('Failed to check for existing menu items:', checkError)
-        alert('Failed to check for existing menu items')
+        toast.error('Check failed', 'Unable to verify if category can be deleted')
         return
       }
 
@@ -325,14 +446,14 @@ export default function AdminMenuPage() {
 
         if (orderCheckError) {
           console.error('Failed to check for existing orders:', orderCheckError)
-          alert('Failed to check for existing orders')
+          toast.error('Check failed', 'Unable to verify if category can be deleted')
           return
         }
 
         if (orderItems && orderItems.length > 0) {
-          alert(
-            `Cannot delete this category because it contains menu items with existing orders. ` +
-            `You can hide individual menu items instead or move them to another category first.`
+          toast.error(
+            'Cannot delete category',
+            'This category contains menu items with existing orders. Hide items or move them to another category first.'
           )
           return
         }
@@ -354,38 +475,54 @@ export default function AdminMenuPage() {
 
       if (error) throw error
 
+      toast.success('Category deleted', 'Category and its items have been removed')
       await loadData()
     } catch (error: any) {
       console.error('Failed to delete category:', error)
       
       // Handle specific foreign key constraint error
       if (error.message.includes('foreign key constraint') || error.message.includes('violates')) {
-        alert(
-          'Cannot delete this category because it contains menu items with existing orders. ' +
-          'Please hide or move the menu items first, or contact support for assistance.'
+        toast.error(
+          'Cannot delete category',
+          'This category contains menu items with existing orders. Please hide or move the items first.'
         )
       } else {
-        alert(`Failed to delete category: ${error.message}`)
+        toast.error('Delete failed', error.message || 'Unable to delete category')
       }
     }
   }
 
   const toggleItemAvailability = async (itemId: string, currentStatus: boolean) => {
+    const action = currentStatus ? 'hide' : 'show'
+    
     try {
+      console.log(`[AT RESTAURANT - Admin Menu] ${action === 'hide' ? 'Hiding' : 'Showing'} menu item:`, itemId)
+      
       const { error } = await supabase
         .from('menu_items')
         .update({ is_available: !currentStatus })
         .eq('id', itemId)
 
-      if (error) throw error
+      if (error) {
+        console.error(`[AT RESTAURANT - Admin Menu] Failed to ${action} menu item:`, error)
+        throw error
+      }
 
+      console.log(`[AT RESTAURANT - Admin Menu] Successfully ${action === 'hide' ? 'hid' : 'showed'} menu item`)
+      
       await loadData()
+      
+      // Show success feedback
+      const itemName = menuItems.find(item => item.id === itemId)?.name || 'Item'
+      toast.success(
+        'Availability updated',
+        `${itemName} is now ${!currentStatus ? 'available' : 'hidden'} for ordering`
+      )
     } catch (error: any) {
-      console.error('Failed to update item availability:', error)
-      alert(`Failed to update availability: ${error.message}`)
+      console.error(`[AT RESTAURANT - Admin Menu] Toggle availability error:`, error)
+      toast.error('Update failed', error.message || 'Unable to update availability. Please try again.')
     }
   }
-
   const startEditItem = (item: MenuItem) => {
     setEditingItem(item)
     setItemForm({
@@ -396,6 +533,7 @@ export default function AdminMenuPage() {
       image_url: item.image_url || '',
       is_available: item.is_available
     })
+    clearImageSelection()
   }
 
   const startEditCategory = (category: Category) => {
@@ -817,45 +955,76 @@ export default function AdminMenuPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Image URL
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Menu Item Image
                     </label>
-                    <div className="relative">
-                      <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    
+                    {/* Image Upload Button */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-orange-400 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="cursor-pointer flex flex-col items-center"
+                      >
+                        <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Click to upload image
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, WebP up to 5MB
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Image Preview */}
+                    {(imagePreview || itemForm.image_url) && (
+                      <div className="mt-4">
+                        <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden">
+                          <img
+                            src={imagePreview || itemForm.image_url}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = ''
+                              e.currentTarget.alt = 'Failed to load'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={clearImageSelection}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {imageFile && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Selected: {imageFile.name} ({(imageFile.size / 1024).toFixed(1)} KB)
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Or use URL */}
+                    <div className="mt-4">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Or paste image URL
+                      </label>
                       <Input
                         value={itemForm.image_url}
                         onChange={(e) => setItemForm(prev => ({ ...prev, image_url: e.target.value }))}
                         placeholder="https://example.com/image.jpg"
-                        className="pl-10"
+                        className="text-sm"
+                        disabled={!!imageFile}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Provide a direct URL to the menu item image
-                    </p>
                   </div>
-
-                  {itemForm.image_url && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Image Preview
-                      </label>
-                      <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <img
-                          src={itemForm.image_url}
-                          alt="Preview"
-                          className="max-w-full max-h-full object-cover rounded-lg"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            const nextElement = e.currentTarget.nextElementSibling as HTMLElement
-                            if (nextElement) {
-                              nextElement.style.display = 'block'
-                            }
-                          }}
-                        />
-                        <span className="text-gray-500 text-sm hidden">Invalid image URL</span>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="flex items-center space-x-2">
                     <input
@@ -874,15 +1043,27 @@ export default function AdminMenuPage() {
               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
                 <Button
                   variant="outline"
-                  onClick={() => setShowAddItem(false)}
+                  onClick={() => {
+                    setShowAddItem(false)
+                    clearImageSelection()
+                  }}
+                  disabled={uploadingImage}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAddItem}
                   className="bg-orange-500 hover:bg-orange-600"
+                  disabled={uploadingImage}
                 >
-                  Add Menu Item
+                  {uploadingImage ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    'Add Menu Item'
+                  )}
                 </Button>
               </div>
             </div>
