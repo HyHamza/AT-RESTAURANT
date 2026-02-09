@@ -26,6 +26,7 @@ export function VideoBackground({
   const [videoError, setVideoError] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [loadProgress, setLoadProgress] = useState(0)
+  const [isCached, setIsCached] = useState(false)
 
   useEffect(() => {
     // Check if we're offline
@@ -37,11 +38,26 @@ export function VideoBackground({
     window.addEventListener('online', checkOnlineStatus)
     window.addEventListener('offline', checkOnlineStatus)
 
+    // Listen for SW messages about video caching
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'VIDEO_CACHED' && event.data?.url === src) {
+        console.log('[Video Background] Video cached by SW:', src)
+        setIsCached(true)
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage)
+    }
+
     return () => {
       window.removeEventListener('online', checkOnlineStatus)
       window.removeEventListener('offline', checkOnlineStatus)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage)
+      }
     }
-  }, [])
+  }, [src])
 
   useEffect(() => {
     const video = videoRef.current
@@ -193,8 +209,15 @@ export function VideoBackground({
         </div>
       )}
       
+      {/* Cached indicator - subtle success message */}
+      {isCached && isLoaded && (
+        <div className="absolute bottom-4 right-4 bg-green-500/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 animate-fade-in">
+          <span>✓ Cached for offline</span>
+        </div>
+      )}
+      
       {/* Offline/Error indicator - subtle */}
-      {(videoError || (isOffline && !isLoaded)) && (
+      {(videoError || (isOffline && !isLoaded)) && !isCached && (
         <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
           {isOffline ? '📡 Offline Mode' : '🎬 Video unavailable'}
         </div>

@@ -15,6 +15,7 @@ declare global {
 }
 
 // Optimized service worker registration - runs only once per session
+// CRITICAL: This must NEVER block page load or navigation
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return null
@@ -22,7 +23,7 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
 
   // CRITICAL: Prevent duplicate registrations
   if (window.__SW_REGISTERED__ || window.__SW_REGISTERING__) {
-    console.log('[SW] Already registered or registering')
+    console.log('[SW] Already registered or registering, skipping')
     return navigator.serviceWorker.ready.catch(() => null)
   }
 
@@ -31,46 +32,67 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
   try {
     // Check if already controlled by a service worker
     if (navigator.serviceWorker.controller) {
-      console.log('[SW] Already controlled')
+      console.log('[SW] Already controlled by active SW')
       window.__SW_REGISTERED__ = true
       window.__SW_REGISTERING__ = false
       return navigator.serviceWorker.ready
     }
 
     // Register with aggressive cache bypass
+    console.log('[SW] Registering new service worker...')
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none' // CRITICAL: Never cache sw.js
     })
 
-    console.log('[SW] Registered successfully')
+    console.log('[SW] Registration successful')
     window.__SW_REGISTERED__ = true
     window.__SW_REGISTERING__ = false
 
-    // Handle updates without blocking
+    // Handle updates without blocking (fire-and-forget)
     registration.addEventListener('updatefound', () => {
       const newWorker = registration.installing
       if (!newWorker) return
 
+      console.log('[SW] Update found, installing new version...')
+      
       newWorker.addEventListener('statechange', () => {
+        console.log('[SW] New worker state:', newWorker.state)
+        
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('[SW] Update available')
-          // Auto-activate new worker
+          console.log('[SW] New version installed, activating...')
+          // Auto-activate new worker immediately
           newWorker.postMessage({ type: 'SKIP_WAITING' })
+        }
+        
+        if (newWorker.state === 'activated') {
+          console.log('[SW] New version activated')
         }
       })
     })
 
     // Listen for controller change (new SW activated)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('[SW] Controller changed, reloading...')
-      window.location.reload()
+      console.log('[SW] Controller changed - new SW is now active')
+      // Only reload if we're not in the middle of navigation
+      if (!window.__SW_REGISTERING__) {
+        console.log('[SW] Reloading to use new SW...')
+        window.location.reload()
+      }
+    })
+
+    // Listen for SW messages
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'SW_ACTIVATED') {
+        console.log('[SW] Received activation confirmation:', event.data.version)
+      }
     })
 
     return registration
   } catch (error) {
-    console.warn('[SW] Registration failed:', error)
+    console.warn('[SW] Registration failed (non-critical):', error)
     window.__SW_REGISTERING__ = false
+    // Don't throw - app should work without SW
     return null
   }
 }
@@ -115,28 +137,50 @@ export function OfflineInit() {
     if (initialized.current) return
     initialized.current = true
 
-    // Use requestIdleCallback to defer initialization until after hydration
+    // CRITICAL: Defer ALL initialization to prevent blocking hydration
+    // Use requestIdleCallback to run after browser is idle
     const init = () => {
+      console.log('[Offline Init] Starting deferred initialization...')
+      
       // Start sync service immediately (non-blocking)
       syncService.startAutoSync()
 
-      // Clean expired assets (non-blocking)
-      assetCache.cleanExpiredAssets().catch(() => {})
-
-      // Register service worker (non-blocking)
-      registerServiceWorker().then(registration => {
-        if (registration) {
-          // Pre-cache menu data after a delay (non-blocking)
-          setTimeout(() => preCacheMenuData(), 2000)
-        }
+      // Clean expired assets (fire-and-forget, non-blocking)
+      assetCache.cleanExpiredAssets().catch(err => {
+        console.warn('[Offline Init] Asset cleanup failed:', err)
       })
+
+      // Register service worker (fire-and-forget, non-blocking)
+      registerServiceWorker()
+        .then(registration => {
+          if (registration) {
+            console.log('[Offline Init] SW registered, scheduling menu pre-cache...')
+            // Pre-cache menu data after a longer delay (non-blocking)
+            // Wait 5 seconds to ensure app is fully loaded
+            setTimeout(() => {
+              preCacheMenuData().catch(err => {
+                console.warn('[Offline Init] Menu pre-cache failed:', err)
+              })
+            }, 5000)
+          } else {
+            console.log('[Offline Init] SW registration skipped or failed')
+          }
+        })
+        .catch(err => {
+          console.warn('[Offline Init] SW registration error:', err)
+        })
+      
+      console.log('[Offline Init] Initialization scheduled')
     }
 
-    // CRITICAL: Defer to prevent blocking hydration
+    // CRITICAL: Maximum deferral to prevent ANY blocking
+    // Use requestIdleCallback with a long timeout, or fallback to setTimeout
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(init, { timeout: 2000 })
+      // Wait until browser is completely idle, up to 5 seconds
+      requestIdleCallback(init, { timeout: 5000 })
     } else {
-      setTimeout(init, 100)
+      // Fallback: wait 1 second before initializing
+      setTimeout(init, 1000)
     }
 
     // Cleanup
