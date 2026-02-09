@@ -1,5 +1,5 @@
-// AT Restaurant - Service Worker v5
-const CACHE_VERSION = 'v5'
+// AT Restaurant - Service Worker v6
+const CACHE_VERSION = 'v6'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
@@ -13,7 +13,7 @@ const PRECACHE_ASSETS = [
 
 // Install event - skip waiting immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v5...')
+  console.log('[SW] Installing v6...')
   
   event.waitUntil(
     (async () => {
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - claim all clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v5...')
+  console.log('[SW] Activating v6...')
   
   event.waitUntil(
     (async () => {
@@ -327,10 +327,11 @@ self.addEventListener('fetch', (event) => {
         
         return response
       } catch (error) {
-        console.log('[SW] Static asset offline:', url.pathname)
+        console.log('[SW] Static asset failed:', url.pathname, error.message)
         
-        // Fallback for images
+        // Fallback for images (including external images with CORS errors)
         if (request.destination === 'image') {
+          console.log('[SW] Returning placeholder image')
           return new Response(
             new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
             { status: 200, headers: { 'Content-Type': 'image/gif' } }
@@ -354,8 +355,12 @@ self.addEventListener('fetch', (event) => {
           })
         }
         
-        // For other assets, throw to let browser handle
-        throw error
+        // For other assets, return a proper error response (don't throw!)
+        console.log('[SW] Returning 503 for failed asset')
+        return new Response(null, {
+          status: 503,
+          statusText: 'Service Unavailable'
+        })
       }
     })()
   )
@@ -426,4 +431,4 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-console.log('[SW] Loaded v5')
+console.log('[SW] Loaded v6')
