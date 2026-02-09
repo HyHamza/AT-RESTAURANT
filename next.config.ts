@@ -15,10 +15,27 @@ const nextConfig: NextConfig = {
             key: 'Service-Worker-Allowed',
             value: '/',
           },
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
         ],
       },
       {
         source: '/manifest.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/json; charset=utf-8',
+          },
+        ],
+      },
+      {
+        source: '/assets/videos/:path*',
         headers: [
           {
             key: 'Cache-Control',
@@ -55,6 +72,9 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+
+  // Output configuration for Vercel
+  output: 'standalone',
 };
 
 export default nextConfig;

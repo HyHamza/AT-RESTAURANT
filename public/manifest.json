@@ -10,8 +10,9 @@
   "icons": [
     {
       "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
     }
   ],
   "categories": ["food", "lifestyle"],
@@ -20,15 +21,13 @@
       "name": "Menu",
       "short_name": "Menu",
       "description": "Browse our menu",
-      "url": "/menu",
-      "icons": []
+      "url": "/menu"
     },
     {
       "name": "Orders",
       "short_name": "Orders",
       "description": "View your orders",
-      "url": "/order-status",
-      "icons": []
+      "url": "/order-status"
     }
   ]
 }

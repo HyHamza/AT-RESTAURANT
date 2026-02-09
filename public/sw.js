@@ -4,15 +4,11 @@ const RUNTIME_CACHE = 'at-restaurant-runtime-v1'
 const API_CACHE = 'at-restaurant-api-v1'
 const VIDEO_CACHE = 'at-restaurant-video-v1'
 
-// Assets to cache on install
+// Assets to cache on install - only essential files
 const PRECACHE_ASSETS = [
   '/',
   '/offline',
-  '/menu',
-  '/login',
-  '/signup',
-  '/favicon.ico',
-  '/assets/videos/hero.mp4'
+  '/favicon.ico'
 ]
 
 // Install event - cache essential assets
@@ -21,27 +17,54 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[Service Worker] Precaching assets')
-        return cache.addAll(PRECACHE_ASSETS)
+        console.log('[Service Worker] Precaching essential assets')
+        return cache.addAll(PRECACHE_ASSETS).catch((error) => {
+          console.error('[Service Worker] Precache failed:', error)
+          // Don't fail installation if precache fails
+          return Promise.resolve()
+        })
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[Service Worker] Skip waiting')
+        return self.skipWaiting()
+      })
+      .catch((error) => {
+        console.error('[Service Worker] Installation failed:', error)
+      })
   )
 })
 
-// Activate event - clean up old caches
+// Background cache update for video (non-blocking)
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...')
+  
+  // Clean up old caches
+  const cleanup = caches.keys().then((cacheNames) => {
+    return Promise.all(
+      cacheNames
+        .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE && name !== API_CACHE && name !== VIDEO_CACHE)
+        .map((name) => {
+          console.log('[Service Worker] Deleting old cache:', name)
+          return caches.delete(name)
+        })
+    )
+  })
+
+  // Background cache video (non-blocking)
+  const cacheVideo = caches.open(VIDEO_CACHE).then((cache) => {
+    console.log('[Service Worker] Background caching video...')
+    return cache.add('/assets/videos/hero.mp4').catch((error) => {
+      console.log('[Service Worker] Video cache skipped (will cache on first request):', error.message)
+    })
+  })
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE && name !== API_CACHE && name !== VIDEO_CACHE)
-          .map((name) => {
-            console.log('[Service Worker] Deleting old cache:', name)
-            return caches.delete(name)
-          })
-      )
-    }).then(() => self.clients.claim())
+    Promise.all([cleanup, cacheVideo])
+      .then(() => self.clients.claim())
+      .catch((error) => {
+        console.error('[Service Worker] Activation error:', error)
+        return self.clients.claim() // Claim clients even if caching fails
+      })
   )
 })
 
