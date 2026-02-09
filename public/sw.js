@@ -1,5 +1,5 @@
-// AT Restaurant - Service Worker v3
-const CACHE_VERSION = 'v3'
+// AT Restaurant - Service Worker v4
+const CACHE_VERSION = 'v4'
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`
@@ -13,7 +13,7 @@ const PRECACHE_ASSETS = [
 
 // Install event - skip waiting immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v3...')
+  console.log('[SW] Installing v4...')
   
   event.waitUntil(
     (async () => {
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - claim all clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v3...')
+  console.log('[SW] Activating v4...')
   
   event.waitUntil(
     (async () => {
@@ -125,8 +125,9 @@ self.addEventListener('fetch', (event) => {
           console.log('[SW] Fetching video from network:', url.pathname)
           const response = await fetch(request)
           
-          // CRITICAL: Clone and cache in background WITHOUT blocking the response
-          if (response.ok && url.origin === self.location.origin) {
+          // CRITICAL: Only cache full responses (200), not partial (206)
+          // Cache API doesn't support partial responses (HTTP 206)
+          if (response.status === 200 && url.origin === self.location.origin) {
             // Fire-and-forget caching (no await, no blocking)
             const responseClone = response.clone()
             caches.open(VIDEO_CACHE).then(cache => {
@@ -135,15 +136,23 @@ self.addEventListener('fetch', (event) => {
             }).then(() => {
               console.log('[SW] Video cached successfully:', url.pathname)
             }).catch(err => {
-              console.warn('[SW] Video cache failed (quota?):', err.message)
+              console.warn('[SW] Video cache failed:', err.message)
             })
+          } else if (response.status === 206) {
+            console.log('[SW] Skipping cache for partial response (206):', url.pathname)
           }
           
           // Return response immediately (don't wait for cache)
           return response
         } catch (error) {
           console.warn('[SW] Video fetch failed:', error)
-          // Return a proper error response instead of hanging
+          // Try to serve from cache if offline
+          const cached = await caches.match(request)
+          if (cached) {
+            console.log('[SW] Serving cached video after network failure:', url.pathname)
+            return cached
+          }
+          // Return a proper error response
           return new Response(null, { 
             status: 503, 
             statusText: 'Video unavailable offline' 
@@ -183,17 +192,110 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Navigation - ALWAYS network first, never cache HTML
+  // Navigation - Network first with better offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => 
-        caches.match('/offline').then(offline => 
-          offline || new Response(
-            '<!DOCTYPE html><html><head><title>Offline</title></head><body><h1>Offline</h1><p>Check your connection.</p></body></html>',
-            { headers: { 'Content-Type': 'text/html' }, status: 503 }
+      (async () => {
+        try {
+          // Try network first
+          const response = await fetch(request)
+          
+          // Cache successful navigation responses in background
+          if (response.ok) {
+            const responseClone = response.clone()
+            caches.open(RUNTIME_CACHE).then(cache => 
+              cache.put(request, responseClone)
+            ).catch(() => {})
+          }
+          
+          return response
+        } catch (error) {
+          console.log('[SW] Navigation offline, trying cache:', url.pathname)
+          
+          // Try to serve from cache first
+          const cached = await caches.match(request)
+          if (cached) {
+            console.log('[SW] Serving cached page:', url.pathname)
+            return cached
+          }
+          
+          // Try offline page
+          const offlinePage = await caches.match('/offline')
+          if (offlinePage) {
+            console.log('[SW] Serving offline page')
+            return offlinePage
+          }
+          
+          // Last resort: inline offline page
+          console.log('[SW] Serving inline offline page')
+          return new Response(
+            `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Offline - AT Restaurant</title>
+              <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  background: linear-gradient(135deg, #fef5f9 0%, #fff 50%, #fef5f9 100%);
+                  padding: 20px;
+                }
+                .container {
+                  text-align: center;
+                  max-width: 500px;
+                }
+                h1 {
+                  color: #e11b70;
+                  font-size: 3em;
+                  margin-bottom: 20px;
+                }
+                p {
+                  color: #666;
+                  font-size: 1.2em;
+                  line-height: 1.6;
+                  margin-bottom: 30px;
+                }
+                button {
+                  background: #e11b70;
+                  color: white;
+                  border: none;
+                  padding: 15px 30px;
+                  font-size: 1em;
+                  border-radius: 8px;
+                  cursor: pointer;
+                  transition: background 0.2s;
+                }
+                button:hover {
+                  background: #c01560;
+                }
+                .icon {
+                  font-size: 5em;
+                  margin-bottom: 20px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="icon">📡</div>
+                <h1>You're Offline</h1>
+                <p>It looks like you've lost your internet connection. Please check your connection and try again.</p>
+                <button onclick="window.location.reload()">Try Again</button>
+              </div>
+            </body>
+            </html>`,
+            { 
+              headers: { 'Content-Type': 'text/html' }, 
+              status: 503 
+            }
           )
-        )
-      )
+        }
+      })()
     )
     return
   }
@@ -231,6 +333,8 @@ self.addEventListener('fetch', (event) => {
         
         return response
       } catch (error) {
+        console.log('[SW] Static asset offline:', url.pathname)
+        
         // Fallback for images
         if (request.destination === 'image') {
           return new Response(
@@ -238,6 +342,25 @@ self.addEventListener('fetch', (event) => {
             { status: 200, headers: { 'Content-Type': 'image/gif' } }
           )
         }
+        
+        // For JS/CSS chunks, return empty response to prevent errors
+        if (request.destination === 'script') {
+          console.log('[SW] Returning empty script for offline chunk')
+          return new Response('console.log("[SW] Offline chunk skipped");', {
+            status: 200,
+            headers: { 'Content-Type': 'application/javascript' }
+          })
+        }
+        
+        if (request.destination === 'style') {
+          console.log('[SW] Returning empty style for offline chunk')
+          return new Response('/* Offline chunk skipped */', {
+            status: 200,
+            headers: { 'Content-Type': 'text/css' }
+          })
+        }
+        
+        // For other assets, throw to let browser handle
         throw error
       }
     })()
@@ -309,4 +432,4 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
-console.log('[SW] Loaded v3')
+console.log('[SW] Loaded v4')
