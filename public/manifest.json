@@ -1,0 +1,33 @@
+{
+  "name": "AT Restaurant",
+  "short_name": "AT Restaurant",
+  "description": "Fresh Food, Fast Delivery - Order your favorite meals online",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#E91E63",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["food", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Menu",
+      "short_name": "Menu",
+      "description": "Browse our menu",
+      "url": "/menu"
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "description": "View your orders",
+      "url": "/order-status"
+    }
+  ]
+}

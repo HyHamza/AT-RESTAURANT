@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Worker Debug Tool</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 { color: #e11b70; margin-bottom: 20px; }
+    h2 { color: #333; margin: 30px 0 15px; font-size: 1.3em; }
+    .status {
+      padding: 15px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+    button {
+      background: #e11b70;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px 5px 5px 0;
+      transition: background 0.2s;
+    }
+    button:hover { background: #c01560; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .log {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry.error { color: #dc3545; }
+    .log-entry.success { color: #28a745; }
+    .log-entry.info { color: #17a2b8; }
+    .cache-list {
+      list-style: none;
+      padding: 0;
+    }
+    .cache-item {
+      background: #f8f9fa;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cache-item code {
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .badge.active { background: #28a745; color: white; }
+    .badge.waiting { background: #ffc107; color: #000; }
+    .badge.installing { background: #17a2b8; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Service Worker Debug Tool</h1>
+    <p>Use this tool to diagnose and fix service worker issues in production.</p>
+
+    <h2>📊 Service Worker Status</h2>
+    <div id="sw-status"></div>
+
+    <h2>🎬 Video Cache Status</h2>
+    <div id="video-status"></div>
+
+    <h2>🛠️ Actions</h2>
+    <button onclick="checkStatus()">🔄 Refresh Status</button>
+    <button onclick="unregisterSW()">❌ Unregister SW</button>
+    <button onclick="clearAllCaches()">🗑️ Clear All Caches</button>
+    <button onclick="testVideoLoad()">🎥 Test Video Load</button>
+    <button onclick="forceUpdate()">⚡ Force SW Update</button>
+
+    <h2>💾 Cache Contents</h2>
+    <div id="cache-contents"></div>
+
+    <h2>📝 Activity Log</h2>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script>
+    const log = [];
+    
+    function addLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      log.unshift({ timestamp, message, type });
+      updateLogDisplay();
+    }
+
+    function updateLogDisplay() {
+      const logEl = document.getElementById('log');
+      logEl.innerHTML = log.slice(0, 50).map(entry => 
+        `<div class="log-entry ${entry.type}">[${entry.timestamp}] ${entry.message}</div>`
+      ).join('');
+    }
+
+    async function checkStatus() {
+      addLog('Checking service worker status...', 'info');
+      
+      if (!('serviceWorker' in navigator)) {
+        document.getElementById('sw-status').innerHTML = 
+          '<div class="status error">❌ Service Workers not supported in this browser</div>';
+        addLog('Service Workers not supported', 'error');
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        
+        if (!registration) {
+          document.getElementById('sw-status').innerHTML = 
+            '<div class="status warning">⚠️ No service worker registered</div>';
+          addLog('No service worker registered', 'warning');
+          return;
+        }
+
+        let statusHTML = '<div class="status success">✅ Service Worker Registered</div>';
+        
+        if (registration.active) {
+          statusHTML += `<div class="status info">
+            <strong>Active:</strong> ${registration.active.scriptURL}
+            <span class="badge active">ACTIVE</span>
+          </div>`;
+          addLog('Active SW: ' + registration.active.scriptURL, 'success');
+        }
+        
+        if (registration.waiting) {
+          statusHTML += `<div class="status warning">
+            <strong>Waiting:</strong> ${registration.waiting.scriptURL}
+            <span class="badge waiting">WAITING</span>
+            <br><small>A new version is waiting to activate</small>
+          </div>`;
+          addLog('SW waiting to activate', 'warning');
+        }
+        
+        if (registration.installing) {
+          statusHTML += `<div class="status info">
+            <strong>Installing:</strong> ${registration.installing.scriptURL}
+            <span class="badge installing">INSTALLING</span>
+          </div>`;
+          addLog('SW currently installing', 'info');
+        }
+
+        if (navigator.serviceWorker.controller) {
+          statusHTML += '<div class="status success">✅ Page is controlled by SW</div>';
+          addLog('Page controlled by SW', 'success');
+        } else {
+          statusHTML += '<div class="status warning">⚠️ Page not controlled by SW (reload may be needed)</div>';
+          addLog('Page not controlled by SW', 'warning');
+        }
+
+        document.getElementById('sw-status').innerHTML = statusHTML;
+        
+        // Check caches
+        await checkCaches();
+        
+      } catch (error) {
+        document.getElementById('sw-status').innerHTML = 
+          `<div class="status error">❌ Error: ${error.message}</div>`;
+        addLog('Error checking status: ' + error.message, 'error');
+      }
+    }
+
+    async function checkCaches() {
+      try {
+        const cacheNames = await caches.keys();
+        addLog(`Found ${cacheNames.length} cache(s)`, 'info');
+        
+        let html = '<ul class="cache-list">';
+        
+        for (const cacheName of cacheNames) {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+          html += `<li class="cache-item">
+            <div>
+              <code>${cacheName}</code>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                ${keys.length} item(s)
+              </div>
+            </div>
+          </li>`;
+        }
+        
+        html += '</ul>';
+        document.getElementById('cache-contents').innerHTML = html || '<p>No caches found</p>';
+        
+      } catch (error) {
+        addLog('Error checking caches: ' + error.message, 'error');
+      }
+    }
+
+    async function testVideoLoad() {
+      addLog('Testing video load...', 'info');
+      const videoPath = '/assets/videos/hero.mp4';
+      
+      try {
+        const startTime = performance.now();
+        const response = await fetch(videoPath);
+        const endTime = performance.now();
+        const loadTime = Math.round(endTime - startTime);
+        
+        if (response.ok) {
+          const size = response.headers.get('content-length');
+          const sizeInMB = size ? (parseInt(size) / 1024 / 1024).toFixed(2) : 'unknown';
+          const fromCache = response.headers.get('x-cache') || 
+                           (loadTime < 100 ? 'likely cached' : 'likely network');
+          
+          document.getElementById('video-status').innerHTML = 
+            `<div class="status success">
+              ✅ Video loaded successfully<br>
+              <small>Size: ${sizeInMB} MB | Load time: ${loadTime}ms | Source: ${fromCache}</small>
+            </div>`;
+          addLog(`Video loaded in ${loadTime}ms (${sizeInMB} MB)`, 'success');
+        } else {
+          document.getElementById('video-status').innerHTML = 
+            `<div class="status error">❌ Video failed to load: ${response.status}</div>`;
+          addLog(`Video load failed: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        document.getElementById('video-status').innerHTML = 
+          `<div class="status error">❌ Error: ${error.message}</div>`;
+        addLog('Video load error: ' + error.message, 'error');
+      }
+    }
+
+    async function unregisterSW() {
+      if (!confirm('This will unregister the service worker. Continue?')) return;
+      
+      addLog('Unregistering service worker...', 'info');
+      
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.unregister();
+          addLog('Service worker unregistered successfully', 'success');
+          alert('Service worker unregistered. Reload the page to see changes.');
+        } else {
+          addLog('No service worker to unregister', 'warning');
+        }
+        await checkStatus();
+      } catch (error) {
+        addLog('Error unregistering: ' + error.message, 'error');
+      }
+    }
+
+    async function clearAllCaches() {
+      if (!confirm('This will delete all cached data. Continue?')) return;
+      
+      addLog('Clearing all caches...', 'info');
+      
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        addLog(`Cleared ${cacheNames.length} cache(s)`, 'success');
+        alert('All caches cleared. Reload the page to rebuild caches.');
+        await checkStatus();
+      } catch (error) {
+        addLog('Error clearing caches: ' + error.message, 'error');
+      }
+    }
+
+    async function forceUpdate() {
+      addLog('Forcing service worker update...', 'info');
+      
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          addLog('Update check initiated', 'success');
+          setTimeout(checkStatus, 1000);
+        } else {
+          addLog('No service worker registered', 'warning');
+        }
+      } catch (error) {
+        addLog('Error forcing update: ' + error.message, 'error');
+      }
+    }
+
+    // Listen for SW messages
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        addLog(`SW Message: ${JSON.stringify(event.data)}`, 'info');
+      });
+    }
+
+    // Auto-check status on load
+    window.addEventListener('load', () => {
+      addLog('Debug tool loaded', 'success');
+      checkStatus();
+    });
+  </script>
+</body>
+</html>
