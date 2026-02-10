@@ -39,13 +39,13 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
     }
 
     // Register with aggressive cache bypass
-    console.log('[SW] Registering new service worker...')
+    console.log('[SW] Registering new service worker v9 (video-free)...')
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none' // CRITICAL: Never cache sw.js
     })
 
-    console.log('[SW] Registration successful')
+    console.log('[SW] Registration successful - v9 video-free')
     window.__SW_REGISTERED__ = true
     window.__SW_REGISTERING__ = false
 
@@ -66,19 +66,13 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
         }
         
         if (newWorker.state === 'activated') {
-          console.log('[SW] New version activated')
+          console.log('[SW] New version activated - reloading in 1 second...')
+          // Reload after a short delay to ensure SW is fully active
+          setTimeout(() => {
+            window.location.reload()
+          }, 1000)
         }
       })
-    })
-
-    // Listen for controller change (new SW activated)
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('[SW] Controller changed - new SW is now active')
-      // Only reload if we're not in the middle of navigation
-      if (!window.__SW_REGISTERING__) {
-        console.log('[SW] Reloading to use new SW...')
-        window.location.reload()
-      }
     })
 
     // Listen for SW messages

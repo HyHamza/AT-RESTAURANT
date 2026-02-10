@@ -1,14 +1,14 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react';
 
 interface VideoBackgroundProps {
-  src: string
-  className?: string
-  overlayClassName?: string
-  blur?: number
-  overlayOpacity?: number
-  enableParallax?: boolean
+  src: string;
+  className?: string;
+  overlayClassName?: string;
+  blur?: number;
+  overlayOpacity?: number;
+  enableParallax?: boolean;
 }
 
 export function VideoBackground({ 
@@ -19,147 +19,106 @@ export function VideoBackground({
   overlayOpacity = 0.7,
   enableParallax = true
 }: VideoBackgroundProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [videoError, setVideoError] = useState(false)
-  const [isOffline, setIsOffline] = useState(false)
-  const [loadProgress, setLoadProgress] = useState(0)
-  const [isCached, setIsCached] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
 
   useEffect(() => {
-    // Check if we're offline
-    const checkOnlineStatus = () => {
-      setIsOffline(!navigator.onLine)
-    }
+    // CRITICAL: Delay video loading to prevent blocking page load
+    // This ensures the page renders immediately with the fallback gradient
+    const timer = setTimeout(() => {
+      setShouldLoadVideo(true);
+    }, 500); // Wait 500ms before starting video load
 
-    checkOnlineStatus()
-    window.addEventListener('online', checkOnlineStatus)
-    window.addEventListener('offline', checkOnlineStatus)
-
-    // Listen for SW messages about video caching
-    const handleSWMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'VIDEO_CACHED' && event.data?.url === src) {
-        console.log('[Video Background] Video cached by SW:', src)
-        setIsCached(true)
-      }
-    }
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', handleSWMessage)
-    }
-
-    return () => {
-      window.removeEventListener('online', checkOnlineStatus)
-      window.removeEventListener('offline', checkOnlineStatus)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.removeEventListener('message', handleSWMessage)
-      }
-    }
-  }, [src])
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
+    if (!shouldLoadVideo) return;
+    
+    const video = videoRef.current;
+    if (!video) return;
 
     // Ensure video plays on iOS and other mobile devices
-    video.setAttribute('playsinline', 'true')
-    video.setAttribute('webkit-playsinline', 'true')
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
     
-    // Prevent video download by disabling context menu and controls
-    video.setAttribute('controlsList', 'nodownload noremoteplayback nofullscreen')
-    video.setAttribute('disablePictureInPicture', 'true')
-    video.setAttribute('disableRemotePlayback', 'true')
-    
-    // Track loading progress
-    const handleProgress = () => {
-      if (video.buffered.length > 0) {
-        const bufferedEnd = video.buffered.end(video.buffered.length - 1)
-        const duration = video.duration
-        if (duration > 0) {
-          const progress = (bufferedEnd / duration) * 100
-          setLoadProgress(Math.min(progress, 100))
-        }
-      }
-    }
+    // Prevent video download
+    video.setAttribute('controlsList', 'nodownload noremoteplayback nofullscreen');
+    video.setAttribute('disablePictureInPicture', 'true');
+    video.setAttribute('disableRemotePlayback', 'true');
 
     // Handle video load
     const handleLoadedData = () => {
-      setIsLoaded(true)
-      setIsLoading(false)
-      setVideoError(false)
-      setLoadProgress(100)
-      console.log('[Video Background] Video loaded successfully')
-    }
-
-    // Handle video can play through
-    const handleCanPlayThrough = () => {
-      setIsLoading(false)
-      console.log('[Video Background] Video can play through')
-    }
+      setIsLoaded(true);
+      setVideoError(false);
+      console.log('[Video Background] Video loaded successfully');
+    };
 
     // Handle video error
     const handleError = (e: Event) => {
-      console.error('[Video Background] Failed to load video:', src, e)
-      setVideoError(true)
-      setIsLoaded(false)
-      setIsLoading(false)
-    }
+      console.warn('[Video Background] Failed to load video:', src, e);
+      setVideoError(true);
+      setIsLoaded(false);
+    };
 
     // Prevent right-click download
     const preventContextMenu = (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
-      return false
-    }
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
 
     // Prevent drag and drop
     const preventDrag = (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
-      return false
-    }
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
 
-    video.addEventListener('loadeddata', handleLoadedData)
-    video.addEventListener('canplaythrough', handleCanPlayThrough)
-    video.addEventListener('progress', handleProgress)
-    video.addEventListener('error', handleError)
-    video.addEventListener('contextmenu', preventContextMenu)
-    video.addEventListener('dragstart', preventDrag)
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('error', handleError);
+    video.addEventListener('contextmenu', preventContextMenu);
+    video.addEventListener('dragstart', preventDrag);
 
-    // Attempt to play the video immediately (don't wait for SW)
+    // Attempt to play the video
     const playVideo = async () => {
       try {
-        // Start loading immediately
-        video.load()
-        await video.play()
-        console.log('[Video Background] Video playing')
+        // Use requestAnimationFrame to ensure smooth playback start
+        requestAnimationFrame(async () => {
+          try {
+            await video.play();
+            console.log('[Video Background] Video playing');
+          } catch (error) {
+            console.log('[Video Background] Video autoplay prevented:', error);
+            // Try again on user interaction
+            const playOnInteraction = () => {
+              video.play().catch(() => {});
+              document.removeEventListener('click', playOnInteraction);
+              document.removeEventListener('touchstart', playOnInteraction);
+            };
+            document.addEventListener('click', playOnInteraction, { once: true });
+            document.addEventListener('touchstart', playOnInteraction, { once: true });
+          }
+        });
       } catch (error) {
-        console.log('[Video Background] Video autoplay prevented:', error)
-        // Try again on user interaction
-        const playOnInteraction = () => {
-          video.play().catch(() => {})
-          document.removeEventListener('click', playOnInteraction)
-          document.removeEventListener('touchstart', playOnInteraction)
-        }
-        document.addEventListener('click', playOnInteraction, { once: true })
-        document.addEventListener('touchstart', playOnInteraction, { once: true })
+        console.warn('[Video Background] Play error:', error);
       }
-    }
+    };
 
-    // Start immediately (no delay)
-    playVideo()
+    // Start playing after a short delay
+    const playTimer = setTimeout(playVideo, 100);
 
     return () => {
-      video.removeEventListener('loadeddata', handleLoadedData)
-      video.removeEventListener('canplaythrough', handleCanPlayThrough)
-      video.removeEventListener('progress', handleProgress)
-      video.removeEventListener('error', handleError)
-      video.removeEventListener('contextmenu', preventContextMenu)
-      video.removeEventListener('dragstart', preventDrag)
-    }
-  }, [src])
+      clearTimeout(playTimer);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('contextmenu', preventContextMenu);
+      video.removeEventListener('dragstart', preventDrag);
+    };
+  }, [src, shouldLoadVideo]);
 
   return (
     <div 
@@ -167,7 +126,7 @@ export function VideoBackground({
       className={`absolute inset-0 w-full h-full ${className}`}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Fallback gradient background - Pink/White */}
+      {/* Fallback gradient background - Always visible, video fades in on top */}
       <div 
         className="absolute inset-0" 
         style={{
@@ -175,19 +134,18 @@ export function VideoBackground({
         }}
       />
       
-      {/* Video element with parallax effect */}
-      {!videoError && (
+      {/* Video element - only load when ready */}
+      {shouldLoadVideo && !videoError && (
         <video
           ref={videoRef}
-          autoPlay
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           controlsList="nodownload noremoteplayback nofullscreen"
           disablePictureInPicture
           disableRemotePlayback
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-out ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           style={{ 
@@ -199,28 +157,6 @@ export function VideoBackground({
         >
           <source src={src} type="video/mp4" />
         </video>
-      )}
-      
-      {/* Loading indicator - only show while actively loading */}
-      {isLoading && !isLoaded && !videoError && (
-        <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          <span>Loading video... {Math.round(loadProgress)}%</span>
-        </div>
-      )}
-      
-      {/* Cached indicator - subtle success message */}
-      {isCached && isLoaded && (
-        <div className="absolute bottom-4 right-4 bg-green-500/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 animate-fade-in">
-          <span>✓ Cached for offline</span>
-        </div>
-      )}
-      
-      {/* Offline/Error indicator - subtle */}
-      {(videoError || (isOffline && !isLoaded)) && !isCached && (
-        <div className="absolute bottom-4 right-4 bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
-          {isOffline ? '📡 Offline Mode' : '🎬 Video unavailable'}
-        </div>
       )}
       
       {/* Professional Pink/White Overlay - Foodpanda Style */}
@@ -253,5 +189,5 @@ export function VideoBackground({
         }}
       />
     </div>
-  )
+  );
 }

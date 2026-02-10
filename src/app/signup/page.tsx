@@ -232,7 +232,7 @@ function SignupForm() {
                       type="text"
                       value={formData.fullName}
                       onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      placeholder="John Doe"
+                      placeholder="Your name"
                       className="pl-11 pr-4 h-12 text-base border border-gray-300 rounded-lg focus:border-pink-primary focus:ring-2 focus:ring-pink-primary/10 transition-all"
                       required
                       autoFocus
