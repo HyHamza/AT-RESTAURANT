@@ -26,6 +26,9 @@ import {
   CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 function OrderContent() {
   const { items, total, updateQuantity, removeItem, clearCart } = useCart()
@@ -441,10 +444,16 @@ function OrderContent() {
     <div className="min-h-screen bg-gray-light pt-16">
       {/* Professional header */}
       <div className="bg-white shadow-clean border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {/* Back Button and Breadcrumbs */}
+          <div className="mb-4">
+            <BackButton href="/menu" label="Back to Menu" />
+          </div>
+          <Breadcrumbs items={[{ label: 'Menu', href: '/menu' }, { label: 'Checkout' }]} className="mb-4" />
+          
           <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-dark mb-2">Complete Your Order</h1>
-            <p className="text-muted-text text-lg">Review your items and provide delivery details</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-dark mb-2">Complete Your Order</h1>
+            <p className="text-muted-text text-base sm:text-lg">Review your items and provide delivery details</p>
           </div>
         </div>
       </div>
@@ -861,7 +870,7 @@ function OrderContent() {
                     >
                       {isSubmitting ? (
                         <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                          <LoadingSpinner size="sm" variant="white" className="mr-3" />
                           Placing Order...
                         </div>
                       ) : (

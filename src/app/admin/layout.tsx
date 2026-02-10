@@ -6,8 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { LogOut, Menu as MenuIcon, Package, Users, BarChart3, X } from 'lucide-react'
+import { LogOut, Menu as MenuIcon, Package, Users, BarChart3, X, Home, ChevronRight, UtensilsCrossed, ShoppingBag, UserCircle } from 'lucide-react'
 import Link from 'next/link'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -109,8 +110,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <LoadingSpinner size="xl" />
+          <p className="mt-4 text-gray-600 font-medium">Loading admin panel...</p>
+        </div>
       </div>
     )
   }
@@ -157,11 +161,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: BarChart3 },
-    { name: 'Orders', href: '/admin/orders', icon: Package },
-    { name: 'Menu Management', href: '/admin/menu', icon: MenuIcon },
+    { name: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+    { name: 'Menu', href: '/admin/menu', icon: Package },
     { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Customers', href: '/admin/customers', icon: Users },
+    { name: 'Customers', href: '/admin/customers', icon: UserCircle },
   ]
+
+  // Generate breadcrumbs from pathname
+  const getBreadcrumbs = () => {
+    const paths = pathname.split('/').filter(Boolean)
+    const breadcrumbs = []
+    
+    if (paths.length > 1) {
+      const pageName = paths[paths.length - 1]
+      const pageTitle = pageName.charAt(0).toUpperCase() + pageName.slice(1)
+      breadcrumbs.push({ name: pageTitle, href: pathname })
+    }
+    
+    return breadcrumbs
+  }
+
+  const breadcrumbs = getBreadcrumbs()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -181,9 +201,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-orange-500 to-red-500 shadow-sm">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-4 w-4 text-white" />
+              <UtensilsCrossed className="h-4 w-4 text-white" />
             </div>
-            <h1 className="text-lg font-bold text-white">AT Admin</h1>
+            <h1 className="text-lg font-bold text-white">Admin Panel</h1>
           </div>
           {/* Close button for mobile */}
           <Button
@@ -223,21 +243,39 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* User info at bottom */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between text-sm">
+          <Link
+            href="/"
+            className="flex items-center space-x-3 px-4 py-2 mb-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+          >
+            <Home className="h-5 w-5" />
+            <span>Back to Website</span>
+          </Link>
+          
+          <div className="flex items-center justify-between text-sm px-4 py-2 bg-gray-50 rounded-lg mb-2">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                 <span className="text-orange-600 font-semibold text-xs">
                   {user?.email?.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div className="hidden sm:block">
-                <div className="font-medium text-gray-900 truncate max-w-32">
+              <div>
+                <div className="font-medium text-gray-900 truncate max-w-32 text-xs">
                   {user?.email}
                 </div>
                 <div className="text-xs text-gray-500">Administrator</div>
               </div>
             </div>
           </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
       </div>
 
@@ -274,9 +312,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Desktop top bar */}
         <div className="hidden lg:block bg-white shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome to AT RESTAURANT Admin Panel</p>
+            <div className="flex items-center space-x-4">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">AT Restaurant Admin</h1>
+              </div>
+              {breadcrumbs.length > 0 && (
+                <>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <nav className="flex items-center space-x-2 text-sm">
+                    {breadcrumbs.map((crumb, index) => (
+                      <span key={crumb.href} className="font-medium text-gray-700">
+                        {crumb.name}
+                      </span>
+                    ))}
+                  </nav>
+                </>
+              )}
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">{user?.email}</span>

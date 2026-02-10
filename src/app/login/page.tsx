@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, ArrowRight, UtensilsCrossed, ShieldCheck, AlertCircle } from 'lucide-react'
 import { AuthSkeleton } from '@/components/skeletons/auth-skeleton'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 function LoginForm() {
   const [formData, setFormData] = useState({
@@ -180,7 +181,7 @@ function LoginForm() {
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
-                    <div className="spinner-pink h-5 w-5 mr-2"></div>
+                    <LoadingSpinner size="sm" variant="white" className="mr-2" />
                     Signing In...
                   </div>
                 ) : (

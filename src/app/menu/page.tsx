@@ -13,6 +13,9 @@ import { useToastHelpers } from '@/components/ui/toast'
 import { Search, Plus, Minus, AlertCircle, Heart } from 'lucide-react'
 import type { Category, MenuItem } from '@/types'
 import { MenuSkeleton } from '@/components/skeletons/menu-skeleton'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -279,6 +282,12 @@ export default function MenuPage() {
       {/* Header */}
       <div className="bg-gray-light border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Back Button and Breadcrumbs */}
+          <div className="mb-4">
+            <BackButton href="/" label="Back to Home" />
+          </div>
+          <Breadcrumbs items={[{ label: 'Menu' }]} className="mb-4" />
+          
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">Our Menu</h1>
@@ -402,7 +411,7 @@ export default function MenuPage() {
                           >
                             {addingToCart === item.id ? (
                               <div className="flex items-center justify-center">
-                                <div className="spinner-pink h-4 w-4 mr-2"></div>
+                                <LoadingSpinner size="sm" variant="white" className="mr-2" />
                                 Adding...
                               </div>
                             ) : (

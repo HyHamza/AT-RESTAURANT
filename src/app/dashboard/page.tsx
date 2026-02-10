@@ -10,6 +10,9 @@ import { User, Package, Clock, CheckCircle, LogOut, ShoppingBag, Settings } from
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import Link from 'next/link'
 import type { Order } from '@/types'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -103,6 +106,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-white pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Back Button and Breadcrumbs */}
+        <div className="mb-4">
+          <BackButton href="/" label="Back to Home" />
+        </div>
+        <Breadcrumbs items={[{ label: 'Dashboard' }]} className="mb-6" />
+        
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <div>

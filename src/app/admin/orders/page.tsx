@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase'
 import { formatPrice, formatDate } from '@/lib/utils'
 import { Search, Eye, Clock, Utensils, Package, CheckCircle, X, Bell, MapPin, ExternalLink } from 'lucide-react'
 import type { Order, OrderItem } from '@/types'
+import { ExportButton } from '@/components/ui/export-button'
+import { ExportColumn, formatDateForExport, formatCurrencyForExport, generateFilename } from '@/lib/export-utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -176,6 +179,20 @@ export default function AdminOrdersPage() {
     return matchesSearch && matchesStatus
   })
 
+  // Export columns configuration
+  const exportColumns: ExportColumn[] = [
+    { key: 'id', label: 'Order ID' },
+    { key: 'customer_name', label: 'Customer Name' },
+    { key: 'customer_email', label: 'Email' },
+    { key: 'customer_phone', label: 'Phone' },
+    { key: 'total_amount', label: 'Total Amount', format: formatCurrencyForExport },
+    { key: 'status', label: 'Status', format: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+    { key: 'delivery_address', label: 'Delivery Address' },
+    { key: 'notes', label: 'Special Instructions' },
+    { key: 'created_at', label: 'Order Date', format: formatDateForExport },
+    { key: 'updated_at', label: 'Last Updated', format: formatDateForExport }
+  ]
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -239,29 +256,38 @@ export default function AdminOrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
-          <p className="text-gray-600">Manage and track all customer orders</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders Management</h1>
+          <p className="text-gray-600 mt-1">Manage and track all customer orders</p>
         </div>
-        <Button
-          onClick={() => {
-            if ('Notification' in window && Notification.permission === 'default') {
-              Notification.requestPermission()
-            }
-          }}
-          variant="outline"
-        >
-          <Bell className="h-4 w-4 mr-2" />
-          Enable Notifications
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <ExportButton
+            data={filteredOrders}
+            columns={exportColumns}
+            filename={generateFilename(`orders_${statusFilter}`)}
+            className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
+          />
+          <Button
+            onClick={() => {
+              if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission()
+              }
+            }}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            <Bell className="h-4 w-4 mr-2" />
+            Enable Notifications
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

@@ -69,16 +69,17 @@ export function Header() {
   return (
     <header className={headerClasses}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 sm:h-18">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 bg-pink-gradient rounded-xl flex items-center justify-center shadow-pink transition-transform group-hover:scale-105">
-              <UtensilsCrossed className="h-5 w-5 text-white" />
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-pink-gradient rounded-xl flex items-center justify-center shadow-pink transition-transform group-hover:scale-105">
+              <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
             <div className="hidden sm:block">
-              <span className="text-xl font-bold text-dark">AT Restaurant</span>
+              <span className="text-lg sm:text-xl font-bold text-dark">AT Restaurant</span>
               <div className="text-xs -mt-1 text-pink-primary">Fresh Food, Fast Delivery</div>
             </div>
+            <span className="sm:hidden text-lg font-bold text-dark">AT</span>
           </Link>
 
           {/* Desktop Navigation */}

@@ -23,6 +23,9 @@ import {
 import type { Order, OrderItem } from '@/types'
 import type { OfflineOrder } from '@/lib/offline-db'
 import Link from 'next/link'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 const statusConfig = {
   pending: {
@@ -260,8 +263,14 @@ function OrderStatusContent() {
   return (
     <div className="min-h-screen bg-white pt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button and Breadcrumbs */}
+        <div className="mb-4">
+          <BackButton href="/dashboard" label="Back to Dashboard" />
+        </div>
+        <Breadcrumbs items={[{ label: 'Order Status' }]} className="mb-6" />
+        
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-dark heading-clean">Order Status</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">Order Status</h1>
           
           {!isOnline && (
             <div className="flex items-center text-pink-primary">
@@ -384,8 +393,17 @@ function OrderStatusContent() {
                 />
               </div>
               <Button onClick={handleSearch} disabled={loading} className="btn-pink-primary">
-                <Search className="h-4 w-4 mr-2" />
-                {loading ? 'Searching...' : 'Track Order'}
+                {loading ? (
+                  <>
+                    <LoadingSpinner size="sm" variant="white" className="mr-2" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Track Order
+                  </>
+                )}
               </Button>
             </div>
             {error && (
