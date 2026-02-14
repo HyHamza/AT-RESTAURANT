@@ -120,8 +120,19 @@ export class SyncService {
         customer_email: order.customer_email,
         customer_phone: order.customer_phone,
         total_amount: order.total_amount,
+        original_amount: order.original_amount || order.total_amount,
+        discount_amount: order.discount_amount || 0,
+        discount_percentage: order.discount_percentage || 0,
+        discount_type: order.discount_type || null,
+        pwa_discount_applied: order.pwa_discount_applied || false,
         status: order.status,
         notes: order.notes || null,
+        delivery_latitude: order.delivery_latitude || null,
+        delivery_longitude: order.delivery_longitude || null,
+        delivery_address: order.delivery_address || null,
+        location_method: order.location_method || 'none',
+        location_accuracy: order.location_accuracy || null,
+        location_timestamp: order.location_timestamp || null,
         created_at: order.created_at
       })
       .select()

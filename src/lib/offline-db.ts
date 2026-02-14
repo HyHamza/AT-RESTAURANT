@@ -1,6 +1,31 @@
 import Dexie, { Table } from 'dexie'
 
 // Database interfaces
+export interface UserSession {
+  userId: string
+  email: string
+  name: string | null
+  phone: string | null
+  authToken: string | null
+  loginTime: number
+  isOfflineAuth: boolean
+  lastActivity: number
+}
+
+export interface SavedLocation {
+  id: string
+  userId: string
+  addressLine1: string
+  addressLine2?: string | null
+  city?: string | null
+  postalCode?: string | null
+  latitude: number
+  longitude: number
+  isPrimary: boolean
+  lastUsedAt: number
+  createdAt: number
+}
+
 export interface OfflineOrder {
   id: string
   user_id?: string | null
@@ -8,8 +33,19 @@ export interface OfflineOrder {
   customer_email: string
   customer_phone: string
   total_amount: number
+  original_amount?: number
+  discount_amount?: number
+  discount_percentage?: number
+  discount_type?: string | null
+  pwa_discount_applied?: boolean
   status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled'
   notes?: string | null
+  delivery_latitude?: number | null
+  delivery_longitude?: number | null
+  delivery_address?: string | null
+  location_method?: 'gps' | 'manual' | 'none' | null
+  location_accuracy?: number | null
+  location_timestamp?: string | null
   items: Array<{
     menu_item_id: string
     quantity: number
@@ -90,10 +126,13 @@ class OfflineDatabase extends Dexie {
   cachedAssets!: Table<CachedAsset>
   syncLogs!: Table<SyncLog>
   settings!: Table<AppSettings>
+  userSession!: Table<UserSession>
+  savedLocations!: Table<SavedLocation>
 
   constructor() {
     super('AtRestaurantDB')
     
+    // Version 1: Original schema
     this.version(1).stores({
       orders: 'id, user_id, synced, created_at, status',
       categories: 'id, sort_order, is_active',
@@ -101,6 +140,18 @@ class OfflineDatabase extends Dexie {
       cachedAssets: 'url, expires_at',
       syncLogs: '++id, action, status, created_at',
       settings: 'key'
+    })
+
+    // Version 2: Add user session and locations
+    this.version(2).stores({
+      orders: 'id, user_id, synced, created_at, status',
+      categories: 'id, sort_order, is_active',
+      menuItems: 'id, category_id, sort_order, is_available',
+      cachedAssets: 'url, expires_at',
+      syncLogs: '++id, action, status, created_at',
+      settings: 'key',
+      userSession: 'userId, lastActivity',
+      savedLocations: 'id, userId, isPrimary, lastUsedAt'
     })
   }
 }
@@ -390,6 +441,210 @@ export const offlineUtils = {
         value,
         updated_at: new Date().toISOString()
       })
+    }, undefined)
+  }
+}
+
+// User session management
+export const sessionManager = {
+  // Save user session
+  async saveSession(session: Omit<UserSession, 'lastActivity'>): Promise<void> {
+    return safeDbOperation(async () => {
+      const sessionData: UserSession = {
+        ...session,
+        lastActivity: Date.now()
+      }
+      
+      await offlineDb!.userSession.put(sessionData)
+      
+      // Also save to localStorage as backup
+      try {
+        localStorage.setItem('at_restaurant_session', JSON.stringify(sessionData))
+      } catch (e) {
+        console.warn('Failed to save session to localStorage:', e)
+      }
+    }, undefined)
+  },
+
+  // Get current session
+  async getSession(): Promise<UserSession | null> {
+    return safeDbOperation(async () => {
+      // Try IndexedDB first
+      const sessions = await offlineDb!.userSession.toArray()
+      if (sessions.length > 0) {
+        const session = sessions[0]
+        
+        // Check if session is still valid (24 hours)
+        const sessionAge = Date.now() - session.lastActivity
+        if (sessionAge < 24 * 60 * 60 * 1000) {
+          // Update last activity
+          await offlineDb!.userSession.update(session.userId, {
+            lastActivity: Date.now()
+          })
+          return session
+        } else {
+          // Session expired, clear it
+          await this.clearSession()
+          return null
+        }
+      }
+      
+      // Fallback to localStorage
+      try {
+        const stored = localStorage.getItem('at_restaurant_session')
+        if (stored) {
+          const session = JSON.parse(stored) as UserSession
+          const sessionAge = Date.now() - session.lastActivity
+          if (sessionAge < 24 * 60 * 60 * 1000) {
+            // Restore to IndexedDB
+            await offlineDb!.userSession.put(session)
+            return session
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load session from localStorage:', e)
+      }
+      
+      return null
+    }, null)
+  },
+
+  // Update session activity
+  async updateActivity(): Promise<void> {
+    return safeDbOperation(async () => {
+      const sessions = await offlineDb!.userSession.toArray()
+      if (sessions.length > 0) {
+        await offlineDb!.userSession.update(sessions[0].userId, {
+          lastActivity: Date.now()
+        })
+      }
+    }, undefined)
+  },
+
+  // Clear session
+  async clearSession(): Promise<void> {
+    return safeDbOperation(async () => {
+      await offlineDb!.userSession.clear()
+      try {
+        localStorage.removeItem('at_restaurant_session')
+      } catch (e) {
+        console.warn('Failed to clear session from localStorage:', e)
+      }
+    }, undefined)
+  },
+
+  // Check if user is authenticated (online or offline)
+  async isAuthenticated(): Promise<boolean> {
+    const session = await this.getSession()
+    return session !== null
+  }
+}
+
+// Location management
+export const locationManager = {
+  // Save location
+  async saveLocation(location: Omit<SavedLocation, 'id' | 'createdAt'>): Promise<string> {
+    return safeDbOperation(async () => {
+      const locationId = `loc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      const locationData: SavedLocation = {
+        ...location,
+        id: locationId,
+        createdAt: Date.now()
+      }
+      
+      // If this is primary, unset other primary locations for this user
+      if (location.isPrimary) {
+        const userLocations = await offlineDb!.savedLocations
+          .where('userId').equals(location.userId)
+          .toArray()
+        
+        for (const loc of userLocations) {
+          if (loc.isPrimary) {
+            await offlineDb!.savedLocations.update(loc.id, { isPrimary: false })
+          }
+        }
+      }
+      
+      await offlineDb!.savedLocations.put(locationData)
+      
+      return locationId
+    }, '')
+  },
+
+  // Get last used location for user
+  async getLastUsedLocation(userId: string): Promise<SavedLocation | null> {
+    return safeDbOperation(async () => {
+      const locations = await offlineDb!.savedLocations
+        .where('userId').equals(userId)
+        .reverse()
+        .sortBy('lastUsedAt')
+      
+      return locations.length > 0 ? locations[0] : null
+    }, null)
+  },
+
+  // Get primary location for user
+  async getPrimaryLocation(userId: string): Promise<SavedLocation | null> {
+    return safeDbOperation(async () => {
+      const locations = await offlineDb!.savedLocations
+        .where('userId').equals(userId)
+        .and(loc => loc.isPrimary === true)
+        .toArray()
+      
+      return locations.length > 0 ? locations[0] : null
+    }, null)
+  },
+
+  // Get all locations for user
+  async getUserLocations(userId: string): Promise<SavedLocation[]> {
+    return safeDbOperation(async () => {
+      return await offlineDb!.savedLocations
+        .where('userId').equals(userId)
+        .reverse()
+        .sortBy('lastUsedAt')
+    }, [])
+  },
+
+  // Update location last used timestamp
+  async updateLastUsed(locationId: string): Promise<void> {
+    return safeDbOperation(async () => {
+      await offlineDb!.savedLocations.update(locationId, {
+        lastUsedAt: Date.now()
+      })
+    }, undefined)
+  },
+
+  // Set location as primary
+  async setPrimary(locationId: string, userId: string): Promise<void> {
+    return safeDbOperation(async () => {
+      // Unset all primary locations for this user
+      const userLocations = await offlineDb!.savedLocations
+        .where('userId').equals(userId)
+        .toArray()
+      
+      for (const loc of userLocations) {
+        if (loc.isPrimary) {
+          await offlineDb!.savedLocations.update(loc.id, { isPrimary: false })
+        }
+      }
+      
+      // Set this location as primary
+      await offlineDb!.savedLocations.update(locationId, { isPrimary: true })
+    }, undefined)
+  },
+
+  // Delete location
+  async deleteLocation(locationId: string): Promise<void> {
+    return safeDbOperation(async () => {
+      await offlineDb!.savedLocations.delete(locationId)
+    }, undefined)
+  },
+
+  // Update location
+  async updateLocation(locationId: string, updates: Partial<SavedLocation>): Promise<void> {
+    return safeDbOperation(async () => {
+      await offlineDb!.savedLocations.update(locationId, updates)
     }, undefined)
   }
 }

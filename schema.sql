@@ -36,6 +36,28 @@ CREATE TABLE IF NOT EXISTS public.users (
     default_longitude DECIMAL(11, 8),
     default_address TEXT,
     location_permissions_granted BOOLEAN DEFAULT FALSE,
+    -- PWA discount fields
+    pwa_installed BOOLEAN DEFAULT FALSE,
+    pwa_installed_at TIMESTAMP WITH TIME ZONE,
+    pwa_discount_eligible BOOLEAN DEFAULT FALSE,
+    pwa_discount_activated_at TIMESTAMP WITH TIME ZONE,
+    pwa_install_device_info TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User locations table for storing multiple delivery addresses
+CREATE TABLE IF NOT EXISTS public.user_locations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    city TEXT,
+    postal_code TEXT,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    is_primary BOOLEAN DEFAULT FALSE,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -139,6 +161,11 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_is_admin ON public.users(is_admin);
 CREATE INDEX IF NOT EXISTS idx_users_location ON public.users(default_latitude, default_longitude);
 
+-- User locations indexes
+CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON public.user_locations(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_locations_primary ON public.user_locations(user_id, is_primary);
+CREATE INDEX IF NOT EXISTS idx_user_locations_last_used ON public.user_locations(user_id, last_used_at DESC);
+
 -- Categories indexes
 CREATE INDEX IF NOT EXISTS idx_categories_active ON public.categories(is_active);
 CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON public.categories(sort_order);
@@ -178,6 +205,12 @@ CREATE TRIGGER update_menu_items_updated_at
 DROP TRIGGER IF EXISTS update_orders_updated_at ON public.orders;
 CREATE TRIGGER update_orders_updated_at 
     BEFORE UPDATE ON public.orders 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_user_locations_updated_at ON public.user_locations;
+CREATE TRIGGER update_user_locations_updated_at 
+    BEFORE UPDATE ON public.user_locations 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -356,6 +389,7 @@ GRANT ALL ON public.menu_items TO anon;
 GRANT ALL ON public.orders TO anon;
 GRANT ALL ON public.order_items TO anon;
 GRANT ALL ON public.order_status_logs TO anon;
+GRANT ALL ON public.user_locations TO anon;
 
 -- Grant full access to authenticated users
 GRANT ALL ON public.users TO authenticated;
@@ -364,6 +398,7 @@ GRANT ALL ON public.menu_items TO authenticated;
 GRANT ALL ON public.orders TO authenticated;
 GRANT ALL ON public.order_items TO authenticated;
 GRANT ALL ON public.order_status_logs TO authenticated;
+GRANT ALL ON public.user_locations TO authenticated;
 
 -- Grant access to views
 GRANT SELECT ON public.active_menu_items TO anon, authenticated;
