@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Search, Eye, Clock, Utensils, Package, CheckCircle, X, Bell, MapPin, ExternalLink } from 'lucide-react'
+import { Search, Eye, Clock, Utensils, Package, CheckCircle, X, Bell, MapPin, ExternalLink, Filter } from 'lucide-react'
 import type { Order, OrderItem } from '@/types'
 import { ExportButton } from '@/components/ui/export-button'
 import { ExportColumn, formatDateForExport, formatCurrencyForExport, generateFilename } from '@/lib/export-utils'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { OrderCard } from '@/components/admin/order-card'
+import { useIsMobile } from '@/hooks/use-media-query'
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -20,6 +22,8 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     loadOrders()
@@ -334,41 +338,42 @@ export default function AdminOrdersPage() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={order.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-4">
                   <div className="flex items-center space-x-4">
-                    <div className={`p-2 rounded-full ${getStatusColor(order.status)}`}>
+                    <div className={`p-2 rounded-full ${getStatusColor(order.status)} flex-shrink-0`}>
                       {getStatusIcon(order.status)}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold">#{order.id}</p>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
+                      <p className="text-sm text-gray-600 truncate">{order.customer_name}</p>
                       <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:space-x-4">
+                    <div className="text-left sm:text-right">
                       <p className="font-semibold">{formatPrice(order.total_amount)}</p>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </span>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewOrder(order)}
+                        className="flex-1 sm:flex-none"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
+                        <Eye className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">View</span>
                       </Button>
                       
                       {getNextStatus(order.status) && (
                         <Button
                           size="sm"
                           onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
-                          className="bg-orange-500 hover:bg-orange-600"
+                          className="bg-orange-500 hover:bg-orange-600 flex-1 sm:flex-none text-xs sm:text-sm"
                         >
                           {getNextStatusLabel(order.status)}
                         </Button>
@@ -379,6 +384,7 @@ export default function AdminOrdersPage() {
                           size="sm"
                           variant="destructive"
                           onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                          className="flex-1 sm:flex-none"
                         >
                           Cancel
                         </Button>

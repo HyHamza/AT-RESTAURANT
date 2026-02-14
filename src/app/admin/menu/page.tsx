@@ -563,23 +563,23 @@ export default function AdminMenuPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Menu Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Menu Management</h1>
           <p className="text-gray-600">Manage categories and menu items</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={() => setShowAddCategory(true)}
             variant="outline"
-            className="border-orange-300 text-orange-700 hover:bg-orange-50"
+            className="border-orange-300 text-orange-700 hover:bg-orange-50 w-full sm:w-auto"
           >
             <Tag className="h-4 w-4 mr-2" />
             Add Category
           </Button>
           <Button
             onClick={() => setShowAddItem(true)}
-            className="bg-orange-500 hover:bg-orange-600"
+            className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Menu Item
