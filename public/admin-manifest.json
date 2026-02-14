@@ -1,11 +1,12 @@
 {
-  "name": "AT Restaurant",
-  "short_name": "AT Restaurant",
-  "description": "Fresh Food, Fast Delivery - Order your favorite meals online",
-  "start_url": "/",
+  "name": "AT Restaurant Admin",
+  "short_name": "AT Admin",
+  "description": "Admin panel for AT Restaurant - Manage orders, menu, and users",
+  "start_url": "/admin",
+  "scope": "/admin/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#E91E63",
+  "background_color": "#f97316",
+  "theme_color": "#ea580c",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -45,13 +46,13 @@
       "purpose": "any"
     }
   ],
-  "categories": ["food", "lifestyle"],
+  "categories": ["business", "productivity"],
   "shortcuts": [
     {
-      "name": "Menu",
-      "short_name": "Menu",
-      "description": "Browse our menu",
-      "url": "/menu",
+      "name": "Orders",
+      "short_name": "Orders",
+      "description": "Manage orders",
+      "url": "/admin/orders",
       "icons": [
         {
           "src": "/assets/icons/android-chrome-192x192.png",
@@ -60,10 +61,22 @@
       ]
     },
     {
-      "name": "Orders",
-      "short_name": "Orders",
-      "description": "View your orders",
-      "url": "/order-status",
+      "name": "Menu",
+      "short_name": "Menu",
+      "description": "Manage menu items",
+      "url": "/admin/menu",
+      "icons": [
+        {
+          "src": "/assets/icons/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "short_name": "Users",
+      "description": "Manage users",
+      "url": "/admin/users",
       "icons": [
         {
           "src": "/assets/icons/android-chrome-192x192.png",

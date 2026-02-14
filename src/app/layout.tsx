@@ -6,8 +6,9 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { CartProvider } from "@/contexts/cart-context";
 import { AdminProvider } from "@/contexts/admin-context";
+import { PWADiscountProvider } from "@/contexts/pwa-discount-context";
 import { ToastProvider } from "@/components/ui/toast";
-import { PWAInstall } from "@/components/pwa-install";
+import { PWAInstallDiscount } from "@/components/pwa-install-discount";
 import { OfflineIndicator } from "@/components/offline-status";
 import { OfflineInit } from "@/components/offline-init";
 
@@ -40,8 +41,11 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#e11b70" />
-        <link rel="icon" href="/favicon.ico" sizes="48x48" />
-        <link rel="apple-touch-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico" />
+        <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -50,22 +54,24 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <ToastProvider>
           <AdminProvider>
-            <CartProvider>
-              <OfflineInit />
-              
-              <div className="min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
-              </div>
-              
-              {/* Simple offline indicator - only shows when offline */}
-              <OfflineIndicator />
-              
-              <PWAInstall />
-            </CartProvider>
+            <PWADiscountProvider>
+              <CartProvider>
+                <OfflineInit />
+                
+                <div className="min-h-screen flex flex-col">
+                  <Header />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+                
+                {/* Simple offline indicator - only shows when offline */}
+                <OfflineIndicator />
+                
+                <PWAInstallDiscount />
+              </CartProvider>
+            </PWADiscountProvider>
           </AdminProvider>
         </ToastProvider>
       </body>

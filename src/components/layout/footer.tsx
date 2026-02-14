@@ -19,9 +19,11 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-pink" style={{ background: 'linear-gradient(135deg, hsl(337, 80%, 50%) 0%, hsl(337, 80%, 60%) 100%)' }}>
-                <UtensilsCrossed className="h-5 w-5 text-white" />
-              </div>
+              <img 
+                src="/assets/icons/android-chrome-192x192.png" 
+                alt="AT Restaurant Logo" 
+                className="w-10 h-10 rounded-xl shadow-pink"
+              />
               <span className="text-xl font-bold text-dark">AT RESTAURANT</span>
             </div>
             <p className="mb-4 max-w-md" style={{ color: 'hsl(330, 23%, 26%)' }}>

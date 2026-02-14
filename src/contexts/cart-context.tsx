@@ -2,11 +2,14 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import { CartItem } from '@/types'
+import { usePWADiscountContext } from './pwa-discount-context'
 
 interface CartState {
   items: CartItem[]
   total: number
   itemCount: number
+  discountAmount: number
+  finalTotal: number
 }
 
 type CartAction =
@@ -15,11 +18,14 @@ type CartAction =
   | { type: 'UPDATE_QUANTITY'; payload: { id: string; quantity: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: CartItem[] }
+  | { type: 'APPLY_DISCOUNT'; payload: { discountAmount: number; finalTotal: number } }
 
 const initialState: CartState = {
   items: [],
   total: 0,
   itemCount: 0,
+  discountAmount: 0,
+  finalTotal: 0,
 }
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -41,7 +47,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const itemCount = newItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: newItems, total, itemCount }
+      return { 
+        items: newItems, 
+        total, 
+        itemCount, 
+        discountAmount: state.discountAmount,
+        finalTotal: total - state.discountAmount
+      }
     }
     
     case 'REMOVE_ITEM': {
@@ -49,7 +61,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const itemCount = newItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: newItems, total, itemCount }
+      return { 
+        items: newItems, 
+        total, 
+        itemCount, 
+        discountAmount: state.discountAmount,
+        finalTotal: total - state.discountAmount
+      }
     }
     
     case 'UPDATE_QUANTITY': {
@@ -62,7 +80,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const itemCount = newItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: newItems, total, itemCount }
+      return { 
+        items: newItems, 
+        total, 
+        itemCount, 
+        discountAmount: state.discountAmount,
+        finalTotal: total - state.discountAmount
+      }
     }
     
     case 'CLEAR_CART':
@@ -72,7 +96,21 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const total = action.payload.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const itemCount = action.payload.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: action.payload, total, itemCount }
+      return { 
+        items: action.payload, 
+        total, 
+        itemCount, 
+        discountAmount: state.discountAmount,
+        finalTotal: total - state.discountAmount
+      }
+    }
+    
+    case 'APPLY_DISCOUNT': {
+      return {
+        ...state,
+        discountAmount: action.payload.discountAmount,
+        finalTotal: action.payload.finalTotal
+      }
     }
     
     default:
@@ -91,6 +129,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState)
+  const { isEligible, calculateDiscount } = usePWADiscountContext()
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -109,6 +148,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('at-restaurant-cart', JSON.stringify(state.items))
   }, [state.items])
+
+  // Apply PWA discount whenever cart total or eligibility changes
+  useEffect(() => {
+    if (state.total > 0) {
+      const discount = calculateDiscount(state.total)
+      dispatch({ 
+        type: 'APPLY_DISCOUNT', 
+        payload: { 
+          discountAmount: discount.discountAmount,
+          finalTotal: discount.finalAmount
+        }
+      })
+    }
+  }, [state.total, isEligible, calculateDiscount])
 
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
     dispatch({ type: 'ADD_ITEM', payload: item })

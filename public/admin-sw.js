@@ -1,92 +1,96 @@
-// AT Restaurant - Service Worker v9 - NEVER CACHE VIDEOS
-const CACHE_VERSION = 'v9';
-const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`;
-const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`;
+// AT Restaurant Admin - Service Worker v1
+const CACHE_VERSION = 'admin-v1';
+const CACHE_NAME = `at-restaurant-admin-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `at-restaurant-admin-runtime-${CACHE_VERSION}`;
+const API_CACHE = `at-restaurant-admin-api-${CACHE_VERSION}`;
 
-// Minimal precache - only critical offline assets (NO VIDEO!)
+// Admin-specific precache assets
 const PRECACHE_ASSETS = [
-  '/offline',
+  '/admin',
+  '/admin/orders',
+  '/admin/menu',
+  '/admin/users',
   '/assets/icons/favicon.ico',
   '/assets/icons/favicon.svg'
 ];
 
-// Install event - skip waiting immediately, NO video caching
+// Install event
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v9 - Video-Free...');
+  console.log('[Admin SW] Installing v1...');
   
   event.waitUntil(
     (async () => {
       try {
-        // Precache critical assets only (NO VIDEO!)
         const cache = await caches.open(CACHE_NAME);
         await Promise.allSettled(
           PRECACHE_ASSETS.map(url => 
             cache.add(url).catch(err => 
-              console.warn(`[SW] Failed to cache ${url}:`, err.message)
+              console.warn(`[Admin SW] Failed to cache ${url}:`, err.message)
             )
           )
         );
-        console.log('[SW] Precache complete (video excluded)');
+        console.log('[Admin SW] Precache complete');
       } catch (error) {
-        console.warn('[SW] Precache error:', error.message);
+        console.warn('[Admin SW] Precache error:', error.message);
       }
       
-      // CRITICAL: Skip waiting immediately
       await self.skipWaiting();
-      console.log('[SW] Skipped waiting - activating immediately');
+      console.log('[Admin SW] Skipped waiting - activating immediately');
     })()
   );
 });
 
-// Activate event - claim all clients immediately
+// Activate event
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v9 - Video-Free...');
+  console.log('[Admin SW] Activating v1...');
   
   event.waitUntil(
     (async () => {
       try {
-        // Delete old caches (including any old video caches)
         const cacheNames = await caches.keys();
         const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE];
         
         await Promise.all(
           cacheNames
-            .filter(name => !validCaches.includes(name))
+            .filter(name => name.startsWith('at-restaurant-admin-') && !validCaches.includes(name))
             .map(name => {
-              console.log('[SW] Deleting old cache:', name);
+              console.log('[Admin SW] Deleting old cache:', name);
               return caches.delete(name);
             })
         );
         
-        console.log('[SW] Cache cleanup complete (all video caches removed)');
+        console.log('[Admin SW] Cache cleanup complete');
       } catch (error) {
-        console.warn('[SW] Cache cleanup error:', error.message);
+        console.warn('[Admin SW] Cache cleanup error:', error.message);
       }
 
-      // CRITICAL: Claim all clients immediately
       await self.clients.claim();
-      console.log('[SW] Claimed all clients - ready to serve');
+      console.log('[Admin SW] Claimed all clients');
       
-      // Notify all clients that SW is ready
       const clients = await self.clients.matchAll({ type: 'window' });
       clients.forEach(client => {
         client.postMessage({ 
           type: 'SW_ACTIVATED', 
           version: CACHE_VERSION,
+          scope: 'admin',
           timestamp: Date.now()
         });
       });
       
-      console.log('[SW] v9 fully activated and operational');
+      console.log('[Admin SW] v1 fully activated');
     })()
   );
 });
 
-// Fetch event - CRITICAL: Must ALWAYS return a response, never hang
+// Fetch event
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Only handle requests within admin scope
+  if (!url.pathname.startsWith('/admin')) {
+    return;
+  }
 
   // Skip non-GET requests
   if (request.method !== 'GET') return;
@@ -94,7 +98,7 @@ self.addEventListener('fetch', (event) => {
   // Skip non-HTTP protocols
   if (!url.protocol.startsWith('http')) return;
 
-  // CRITICAL: Let Next.js internals pass through WITHOUT interception
+  // Skip Next.js internals
   if (
     url.pathname.startsWith('/_next/') ||
     url.searchParams.has('_rsc') ||
@@ -102,61 +106,16 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/__nextjs_') ||
     url.pathname.includes('/webpack-')
   ) {
-    return; // Don't intercept
-  }
-
-  // CRITICAL: Videos - ALWAYS network-only, NEVER cache
-  // This prevents the 16MB video from blocking page loads
-  if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm|ogg)$/)) {
-    event.respondWith(
-      (async () => {
-        try {
-          console.log('[SW] Fetching video from network (no cache):', url.pathname);
-          // Direct network fetch with no-store to prevent any caching
-          const response = await fetch(request, { cache: 'no-store' });
-          console.log('[SW] Video fetched successfully:', url.pathname);
-          return response;
-        } catch (error) {
-          console.log('[SW] Video network failed:', error.message);
-          // Return proper error response (don't throw!)
-          return new Response(null, { 
-            status: 503, 
-            statusText: 'Video unavailable offline' 
-          });
-        }
-      })()
-    );
     return;
   }
 
-  // External images - CORS handling with proper fallback
-  if (request.destination === 'image' && url.origin !== self.location.origin) {
-    event.respondWith(
-      (async () => {
-        try {
-          const response = await fetch(request, { mode: 'no-cors' });
-          return response;
-        } catch (error) {
-          console.log('[SW] External image failed, returning placeholder');
-          // Return 1x1 transparent GIF
-          return new Response(
-            new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
-            { status: 200, headers: { 'Content-Type': 'image/gif' } }
-          );
-        }
-      })()
-    );
-    return;
-  }
-
-  // API - network first with background caching (non-blocking)
+  // API - network first with caching
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       (async () => {
         try {
           const response = await fetch(request);
           
-          // Cache in background (fire-and-forget)
           if (response.ok) {
             const responseClone = response.clone();
             caches.open(API_CACHE).then(cache => 
@@ -166,7 +125,6 @@ self.addEventListener('fetch', (event) => {
           
           return response;
         } catch (error) {
-          // Fallback to cache if offline
           const cached = await caches.match(request);
           return cached || new Response(
             JSON.stringify({ error: 'Offline', offline: true }),
@@ -178,40 +136,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation - Network first, NEVER cache HTML
+  // Navigation - Network first
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          // Always fetch fresh HTML from network
           const response = await fetch(request);
           return response;
         } catch (error) {
-          console.log('[SW] Navigation offline, trying cache:', url.pathname);
-          
-          // Try to serve from cache first
           const cached = await caches.match(request);
           if (cached) {
-            console.log('[SW] Serving cached page:', url.pathname);
             return cached;
           }
           
-          // Try offline page
-          const offlinePage = await caches.match('/offline');
-          if (offlinePage) {
-            console.log('[SW] Serving offline page');
-            return offlinePage;
+          // Fallback to admin dashboard
+          const adminPage = await caches.match('/admin');
+          if (adminPage) {
+            return adminPage;
           }
           
-          // Last resort: inline offline page
-          console.log('[SW] Serving inline offline page');
           return new Response(
             `<!DOCTYPE html>
             <html lang="en">
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Offline - AT Restaurant</title>
+              <title>Offline - AT Restaurant Admin</title>
               <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
@@ -220,7 +170,7 @@ self.addEventListener('fetch', (event) => {
                   align-items: center;
                   justify-content: center;
                   min-height: 100vh;
-                  background: linear-gradient(135deg, #fef5f9 0%, #fff 50%, #fef5f9 100%);
+                  background: linear-gradient(135deg, #fff5f0 0%, #fff 50%, #fff5f0 100%);
                   padding: 20px;
                 }
                 .container {
@@ -228,7 +178,7 @@ self.addEventListener('fetch', (event) => {
                   max-width: 500px;
                 }
                 h1 {
-                  color: #e11b70;
+                  color: #ea580c;
                   font-size: 3em;
                   margin-bottom: 20px;
                 }
@@ -239,7 +189,7 @@ self.addEventListener('fetch', (event) => {
                   margin-bottom: 30px;
                 }
                 button {
-                  background: #e11b70;
+                  background: #ea580c;
                   color: white;
                   border: none;
                   padding: 15px 30px;
@@ -249,7 +199,7 @@ self.addEventListener('fetch', (event) => {
                   transition: background 0.2s;
                 }
                 button:hover {
-                  background: #c01560;
+                  background: #c2410c;
                 }
                 .icon {
                   font-size: 5em;
@@ -260,8 +210,8 @@ self.addEventListener('fetch', (event) => {
             <body>
               <div class="container">
                 <div class="icon">📡</div>
-                <h1>You're Offline</h1>
-                <p>It looks like you've lost your internet connection. Please check your connection and try again.</p>
+                <h1>Admin Panel Offline</h1>
+                <p>You're currently offline. Please check your internet connection to access the admin panel.</p>
                 <button onclick="window.location.reload()">Try Again</button>
               </div>
             </body>
@@ -277,14 +227,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - cache first with background refresh (stale-while-revalidate)
+  // Static assets - cache first with background refresh
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);
       
-      // Return cached immediately if available
       if (cached) {
-        // Refresh cache in background (fire-and-forget)
         fetch(request).then(response => {
           if (response.ok && url.origin === self.location.origin) {
             caches.open(RUNTIME_CACHE).then(cache => 
@@ -296,11 +244,9 @@ self.addEventListener('fetch', (event) => {
         return cached;
       }
 
-      // Not in cache, fetch from network
       try {
         const response = await fetch(request);
         
-        // Cache in background (fire-and-forget)
         if (response.ok && url.origin === self.location.origin) {
           const responseClone = response.clone();
           caches.open(RUNTIME_CACHE).then(cache => 
@@ -310,33 +256,13 @@ self.addEventListener('fetch', (event) => {
         
         return response;
       } catch (error) {
-        console.log('[SW] Static asset failed:', url.pathname, error.message);
-        
-        // Fallback for images
         if (request.destination === 'image') {
-          console.log('[SW] Returning placeholder image');
           return new Response(
             new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
             { status: 200, headers: { 'Content-Type': 'image/gif' } }
           );
         }
         
-        // For JS/CSS chunks, return empty response to prevent errors
-        if (request.destination === 'script') {
-          return new Response('console.log("[SW] Offline chunk skipped");', {
-            status: 200,
-            headers: { 'Content-Type': 'application/javascript' }
-          });
-        }
-        
-        if (request.destination === 'style') {
-          return new Response('/* Offline chunk skipped */', {
-            status: 200,
-            headers: { 'Content-Type': 'text/css' }
-          });
-        }
-        
-        // For other assets, return a proper error response
         return new Response(null, {
           status: 503,
           statusText: 'Service Unavailable'
@@ -352,20 +278,13 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 
-  if (event.data?.type === 'CACHE_MENU_DATA') {
-    caches.open(API_CACHE).then(cache => {
-      cache.put(
-        new Request('/api/menu'),
-        new Response(JSON.stringify(event.data.data), {
-          headers: { 'Content-Type': 'application/json' }
-        })
-      ).catch(() => {});
-    }).catch(() => {});
-  }
-
   if (event.data?.type === 'CLEAR_CACHE') {
     caches.keys().then(names => 
-      Promise.all(names.map(name => caches.delete(name)))
+      Promise.all(
+        names
+          .filter(name => name.startsWith('at-restaurant-admin-'))
+          .map(name => caches.delete(name))
+      )
     ).then(() => {
       event.ports[0]?.postMessage({ success: true });
     }).catch(() => {
@@ -374,27 +293,15 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Background sync
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-orders') {
-    event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => 
-          client.postMessage({ type: 'SYNC_ORDERS', timestamp: Date.now() })
-        );
-      })
-    );
-  }
-});
-
-// Push notifications
+// Push notifications for admin
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'AT Restaurant', {
+    self.registration.showNotification(data.title || 'AT Restaurant Admin', {
       body: data.body || 'New notification',
       icon: '/assets/icons/android-chrome-192x192.png',
       badge: '/assets/icons/favicon-32x32.png',
+      tag: 'admin-notification',
       data: data.data || {}
     })
   );
@@ -405,10 +312,10 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(clients => {
-      const client = clients.find(c => c.url === '/' && 'focus' in c);
-      return client ? client.focus() : self.clients.openWindow('/');
+      const client = clients.find(c => c.url.includes('/admin') && 'focus' in c);
+      return client ? client.focus() : self.clients.openWindow('/admin');
     })
   );
 });
 
-console.log('[SW] v9 Video-Free - Loaded successfully');
+console.log('[Admin SW] v1 Loaded successfully');

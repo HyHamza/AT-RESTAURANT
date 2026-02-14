@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { ShoppingCart, Menu, X, User, LogOut, UtensilsCrossed, MapPin, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/contexts/cart-context'
+import { PWADiscountBadge } from '@/components/pwa-discount-badge'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, usePathname } from 'next/navigation'
 
 export function Header() {
-  const { itemCount, total } = useCart()
+  const { itemCount, total, finalTotal, discountAmount } = useCart()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -72,11 +73,13 @@ export function Header() {
         <div className="flex justify-between items-center h-16 sm:h-18">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-pink-gradient rounded-xl flex items-center justify-center shadow-pink transition-transform group-hover:scale-105">
-              <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
+            <img 
+              src="/assets/icons/android-chrome-192x192.png" 
+              alt="AT Restaurant Logo" 
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-pink transition-transform group-hover:scale-105"
+            />
             <div className="hidden sm:block">
-              <span className="text-lg sm:text-xl font-bold text-dark">AT Restaurant</span>
+              <span className="text-lg sm:text-xl font-bold text-dark">AT RESTAURANT</span>
               <div className="text-xs -mt-1 text-pink-primary">Fresh Food, Fast Delivery</div>
             </div>
             <span className="sm:hidden text-lg font-bold text-dark">AT</span>
@@ -112,6 +115,9 @@ export function Header() {
 
           {/* Right Side - Cart and Auth */}
           <div className="flex items-center space-x-3">
+            {/* PWA Discount Badge */}
+            <PWADiscountBadge variant="header" />
+            
             {/* Cart Button */}
             <Link href="/order">
               <Button 
@@ -125,7 +131,14 @@ export function Header() {
                       {itemCount}
                     </span>
                     <span className="hidden md:block ml-2 text-sm font-medium text-dark group-hover:text-pink-primary transition-colors">
-                      ${total.toFixed(2)}
+                      {discountAmount > 0 ? (
+                        <>
+                          <span className="line-through text-muted-text mr-1">PKR {total.toFixed(2)}</span>
+                          <span className="text-green-600">PKR {finalTotal.toFixed(2)}</span>
+                        </>
+                      ) : (
+                        <>PKR {total.toFixed(2)}</>
+                      )}
                     </span>
                   </>
                 )}

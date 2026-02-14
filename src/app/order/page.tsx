@@ -31,7 +31,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 function OrderContent() {
-  const { items, total, updateQuantity, removeItem, clearCart } = useCart()
+  const { items, total, discountAmount, finalTotal, updateQuantity, removeItem, clearCart } = useCart()
   const toast = useToastHelpers()
   const [user, setUser] = useState<any>(null)
   const [customerInfo, setCustomerInfo] = useState({
@@ -308,7 +308,12 @@ function OrderContent() {
         customer_name: customerInfo.name,
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone,
-        total_amount: total,
+        total_amount: finalTotal,
+        original_amount: total,
+        discount_amount: discountAmount,
+        discount_percentage: discountAmount > 0 ? 10 : 0,
+        discount_type: discountAmount > 0 ? 'pwa_discount' : null,
+        pwa_discount_applied: discountAmount > 0,
         status: 'pending' as const,
         notes: customerInfo.notes || null,
         // Location data
@@ -348,7 +353,12 @@ function OrderContent() {
               customer_name: customerInfo.name,
               customer_email: customerInfo.email,
               customer_phone: customerInfo.phone,
-              total_amount: total,
+              total_amount: finalTotal,
+              original_amount: total,
+              discount_amount: discountAmount,
+              discount_percentage: discountAmount > 0 ? 10 : 0,
+              discount_type: discountAmount > 0 ? 'pwa_discount' : null,
+              pwa_discount_applied: discountAmount > 0,
               status: 'pending',
               notes: customerInfo.notes || null,
               // Location data
@@ -474,7 +484,10 @@ function OrderContent() {
                   <p className="text-sm text-muted-text mt-1">{items.length} item{items.length !== 1 ? 's' : ''} in your cart</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-pink-primary">{formatPrice(total)}</p>
+                  <p className="text-2xl font-bold text-pink-primary">{formatPrice(finalTotal)}</p>
+                  {discountAmount > 0 && (
+                    <p className="text-sm text-muted-text line-through">{formatPrice(total)}</p>
+                  )}
                   <p className="text-sm text-muted-text">Total Amount</p>
                 </div>
               </div>
@@ -540,13 +553,33 @@ function OrderContent() {
               </div>
 
               <div className="border-t border-border pt-6 mt-6">
-                <div className="bg-pink-light rounded-xl p-4 border border-pink-primary/10">
+                <div className="bg-pink-light rounded-xl p-4 border border-pink-primary/10 space-y-3">
+                  {/* Subtotal */}
                   <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-lg font-semibold text-dark">Total Amount</span>
-                      <p className="text-sm text-muted-text">Including all items</p>
+                    <span className="text-base text-muted-text">Subtotal</span>
+                    <span className="text-lg font-semibold text-dark">{formatPrice(total)}</span>
+                  </div>
+                  
+                  {/* PWA Discount */}
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-green-600">
+                      <span className="text-base font-medium flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        PWA Discount (10%)
+                      </span>
+                      <span className="text-lg font-semibold">-{formatPrice(discountAmount)}</span>
                     </div>
-                    <span className="text-3xl font-bold text-pink-primary">{formatPrice(total)}</span>
+                  )}
+                  
+                  {/* Divider */}
+                  <div className="border-t border-pink-primary/20 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-dark">Total Amount</span>
+                      <span className="text-3xl font-bold text-pink-primary">{formatPrice(finalTotal)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <p className="text-sm text-green-600 text-right mt-1">You saved {formatPrice(discountAmount)}!</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -876,7 +909,7 @@ function OrderContent() {
                       ) : (
                         <div className="flex items-center justify-center">
                           <CreditCard className="h-6 w-6 mr-3" />
-                          Place Order - {formatPrice(total)}
+                          Place Order - {formatPrice(finalTotal)}
                         </div>
                       )}
                     </Button>

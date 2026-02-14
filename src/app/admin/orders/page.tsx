@@ -103,7 +103,7 @@ export default function AdminOrdersPage() {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('New Order Received!', {
         body: `Order #${order.id} from ${order.customer_name} - ${formatPrice(order.total_amount)}`,
-        icon: '/favicon.ico'
+        icon: '/assets/icons/android-chrome-192x192.png'
       })
     }
     

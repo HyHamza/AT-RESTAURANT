@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ImageWithModal } from '@/components/ui/image-modal'
+import { PriceDisplay } from '@/components/ui/price-display'
 import { useCart } from '@/contexts/cart-context'
+import { usePWADiscountContext } from '@/contexts/pwa-discount-context'
 import { formatPrice } from '@/lib/utils'
 import { offlineUtils } from '@/lib/offline-db'
 import { supabase } from '@/lib/supabase'
 import { useToastHelpers } from '@/components/ui/toast'
-import { Search, Plus, Minus, AlertCircle, Heart } from 'lucide-react'
+import { Search, Plus, Minus, AlertCircle, Heart, Percent } from 'lucide-react'
 import type { Category, MenuItem } from '@/types'
 import { MenuSkeleton } from '@/components/skeletons/menu-skeleton'
 import { BackButton } from '@/components/ui/back-button'
@@ -27,6 +29,7 @@ export default function MenuPage() {
   const [error, setError] = useState<string | null>(null)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
   const { addItem, items: cartItems, updateQuantity } = useCart()
+  const { isEligible, discountPercentage } = usePWADiscountContext()
   const toast = useToastHelpers()
 
   useEffect(() => {
@@ -288,6 +291,23 @@ export default function MenuPage() {
           </div>
           <Breadcrumbs items={[{ label: 'Menu' }]} className="mb-4" />
           
+          {/* PWA Discount Banner */}
+          {isEligible && (
+            <div className="mb-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl p-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white/20 rounded-full p-2">
+                    <Percent className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg">PWA Discount Active!</p>
+                    <p className="text-sm text-white/90">Get {discountPercentage}% off your entire order</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">Our Menu</h1>
@@ -396,11 +416,7 @@ export default function MenuPage() {
                         <div className="mb-4">
                           <h3 className="text-xl font-semibold text-dark mb-2 line-clamp-1">{item.name}</h3>
                           <p className="text-muted-text text-sm mb-3 line-clamp-2">{item.description}</p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-2xl font-bold text-pink-primary">
-                              {formatPrice(item.price)}
-                            </span>
-                          </div>
+                          <PriceDisplay price={item.price} variant="default" showBadge />
                         </div>
 
                         {quantity === 0 ? (

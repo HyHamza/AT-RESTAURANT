@@ -63,27 +63,27 @@ export function AdminNotifications() {
   }, [isAdmin, isLoading])
 
   const handleNewOrderNotification = (order: OrderNotification) => {
-    const message = `New order from ${order.customer_name} - $${order.total_amount.toFixed(2)}`
-    
-    const notification: NotificationToast = {
-      id: order.id,
-      message,
-      timestamp: Date.now()
+      const message = `New order from ${order.customer_name} - PKR ${order.total_amount.toFixed(2)}`
+
+      const notification: NotificationToast = {
+        id: order.id,
+        message,
+        timestamp: Date.now()
+      }
+
+      // Add notification to state
+      setNotifications(prev => [notification, ...prev.slice(0, 4)]) // Keep max 5 notifications
+
+      // Play notification sound if enabled
+      if (soundEnabled) {
+        playNotificationSound()
+      }
+
+      // Auto-remove notification after 10 seconds
+      setTimeout(() => {
+        removeNotification(notification.id)
+      }, 10000)
     }
-
-    // Add notification to state
-    setNotifications(prev => [notification, ...prev.slice(0, 4)]) // Keep max 5 notifications
-
-    // Play notification sound if enabled
-    if (soundEnabled) {
-      playNotificationSound()
-    }
-
-    // Auto-remove notification after 10 seconds
-    setTimeout(() => {
-      removeNotification(notification.id)
-    }, 10000)
-  }
 
   const playNotificationSound = () => {
     try {

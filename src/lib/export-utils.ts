@@ -168,8 +168,9 @@ export function formatDateForExport(date: string | Date): string {
  * Format currency for export
  */
 export function formatCurrencyForExport(amount: number): string {
-  return `$${amount.toFixed(2)}`
+  return `PKR ${amount.toFixed(2)}`
 }
+
 
 /**
  * Generate filename with timestamp

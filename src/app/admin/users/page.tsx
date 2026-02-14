@@ -303,7 +303,7 @@ export default function AdminUsersPage() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <div className="text-sm">
                       <p className="font-medium">{user.order_count} orders</p>
-                      <p className="text-gray-600">${user.total_spent?.toFixed(2) || '0.00'} spent</p>
+                      <p className="text-gray-600">PKR {user.total_spent?.toFixed(2) || '0.00'} spent</p>
                       <p className="text-gray-500 text-xs">{formatDate(user.created_at)}</p>
                     </div>
                     
@@ -409,12 +409,12 @@ export default function AdminUsersPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Total Spent</label>
-                      <p className="text-gray-900">${selectedUser.total_spent?.toFixed(2) || '0.00'}</p>
+                      <p className="text-gray-900">PKR {selectedUser.total_spent?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Average Order Value</label>
                       <p className="text-gray-900">
-                        ${selectedUser.order_count && selectedUser.total_spent 
+                        PKR {selectedUser.order_count && selectedUser.total_spent 
                           ? (selectedUser.total_spent / selectedUser.order_count).toFixed(2)
                           : '0.00'
                         }

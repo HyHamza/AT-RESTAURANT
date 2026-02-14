@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input'
 import { LogOut, Menu as MenuIcon, Package, Users, BarChart3, X, Home, ChevronRight, UtensilsCrossed, ShoppingBag, UserCircle } from 'lucide-react'
 import Link from 'next/link'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { AdminPWAInstall } from '@/components/admin-pwa-install'
+import { AdminNotifications } from '@/components/admin-notifications'
+import Head from 'next/head'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -185,6 +188,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Admin-specific manifest and meta tags */}
+      <Head>
+        <link rel="manifest" href="/admin-manifest.json" />
+        <meta name="theme-color" content="#ea580c" />
+        <meta name="apple-mobile-web-app-title" content="AT Admin" />
+      </Head>
+
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -200,9 +210,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-orange-500 to-red-500 shadow-sm">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <UtensilsCrossed className="h-4 w-4 text-white" />
-            </div>
+            <img 
+              src="/assets/icons/android-chrome-192x192.png" 
+              alt="AT Restaurant Logo" 
+              className="w-8 h-8 rounded-lg"
+            />
             <h1 className="text-lg font-bold text-white">Admin Panel</h1>
           </div>
           {/* Close button for mobile */}
@@ -293,9 +305,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <MenuIcon className="h-5 w-5" />
             </Button>
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
-                <BarChart3 className="h-3 w-3 text-white" />
-              </div>
+              <img 
+                src="/assets/icons/android-chrome-192x192.png" 
+                alt="AT Restaurant Logo" 
+                className="w-6 h-6 rounded"
+              />
               <h1 className="text-lg font-semibold text-gray-900">Admin Panel</h1>
             </div>
             <Button
@@ -349,6 +363,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Admin PWA Install Prompt */}
+      <AdminPWAInstall />
+
+      {/* Admin Notifications */}
+      <AdminNotifications />
     </div>
   )
 }
