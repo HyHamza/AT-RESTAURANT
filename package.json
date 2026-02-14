@@ -19,7 +19,8 @@
     "type-check": "tsc --noEmit",
     "preview": "next build && next start",
     "clean": "rm -rf .next out node_modules/.cache",
-    "generate-sw-manifest": "node scripts/generate-sw-manifest.js"
+    "generate-sw-manifest": "node scripts/generate-sw-manifest.js",
+    "verify-pwa": "node scripts/verify-dual-pwa.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

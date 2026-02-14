@@ -85,7 +85,7 @@ export function AdminPWAInstall() {
         if (!adminSwRegistration) {
           console.log('[Admin PWA] Registering admin service worker...')
           const registration = await navigator.serviceWorker.register('/admin-sw.js', {
-            scope: '/admin/'
+            scope: '/admin'
           })
           console.log('[Admin PWA] Admin service worker registered:', registration.scope)
 

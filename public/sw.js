@@ -173,6 +173,18 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // CRITICAL: Ignore ALL /admin routes - let admin SW handle them
+  if (url.pathname.startsWith('/admin')) {
+    console.log('[User SW v10] Ignoring admin route:', url.pathname);
+    return;
+  }
+
+  // CRITICAL: Ignore admin manifest
+  if (url.pathname === '/admin-manifest.json' || url.pathname.includes('admin-sw.js')) {
+    console.log('[User SW v10] Ignoring admin resources');
+    return;
+  }
+
   // Skip non-GET requests (except for offline Supabase handling)
   if (request.method !== 'GET' && !isSupabaseRequest(url)) {
     return;

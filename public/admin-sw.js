@@ -87,8 +87,15 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle requests within admin scope
+  // CRITICAL: Only handle requests within /admin scope
   if (!url.pathname.startsWith('/admin')) {
+    console.log('[Admin SW] Ignoring non-admin route:', url.pathname);
+    return;
+  }
+
+  // CRITICAL: Ignore user manifest and user SW
+  if (url.pathname === '/manifest.json' || (url.pathname === '/sw.js' && !url.pathname.includes('admin'))) {
+    console.log('[Admin SW] Ignoring user resources');
     return;
   }
 
