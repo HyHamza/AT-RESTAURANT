@@ -95,13 +95,14 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case 'LOAD_CART': {
       const total = action.payload.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const itemCount = action.payload.reduce((sum, item) => sum + item.quantity, 0)
+      const discountAmount = state.discountAmount || 0
       
       return { 
         items: action.payload, 
         total, 
         itemCount, 
-        discountAmount: state.discountAmount,
-        finalTotal: total - state.discountAmount
+        discountAmount,
+        finalTotal: total - discountAmount
       }
     }
     

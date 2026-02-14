@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { ImageWithModal } from '@/components/ui/image-modal'
 import { VideoBackground } from '@/components/ui/video-background'
 import { ParallaxHero } from '@/components/ui/parallax-hero'
@@ -328,15 +328,13 @@ export default function Home() {
 
           {/* Search */}
           <div className="mb-8 max-w-2xl mx-auto px-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-text h-5 w-5 pointer-events-none z-10" />
-              <Input
-                placeholder="Search for dishes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-clean pl-12 pr-4 h-12 sm:h-14 text-base sm:text-lg rounded-xl w-full"
-              />
-            </div>
+            <SearchInput
+              placeholder="Search for dishes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={() => setSearchQuery('')}
+              showClearButton={true}
+            />
           </div>
 
           {/* Category Filter */}

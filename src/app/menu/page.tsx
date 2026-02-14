@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { ImageWithModal } from '@/components/ui/image-modal'
 import { PriceDisplay } from '@/components/ui/price-display'
 import { useCart } from '@/contexts/cart-context'
@@ -322,13 +322,13 @@ export default function MenuPage() {
           
           {/* Search */}
           <div className="mt-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-text h-5 w-5 pointer-events-none z-10" />
-              <Input
+            <div className="max-w-md">
+              <SearchInput
                 placeholder="Search menu items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-clean pl-12 h-12 text-base rounded-xl w-full"
+                onClear={() => setSearchQuery('')}
+                showClearButton={true}
               />
             </div>
           </div>

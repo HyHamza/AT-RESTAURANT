@@ -1,6 +1,7 @@
 'use client'
 
 import { usePWADiscountContext } from '@/contexts/pwa-discount-context'
+import { formatPrice } from '@/lib/utils'
 import { Percent } from 'lucide-react'
 
 interface PriceDisplayProps {
@@ -65,7 +66,7 @@ export function PriceDisplay({
     return (
       <div className={`flex items-center ${className}`}>
         <span className={`${sizes.final} text-gray-900`}>
-          ${originalAmount.toFixed(2)}
+          {formatPrice(originalAmount)}
         </span>
       </div>
     )
@@ -76,11 +77,11 @@ export function PriceDisplay({
     <div className={`flex items-center gap-2 ${className}`}>
       <div className="flex flex-col">
         <span className={`${sizes.original} text-gray-500 line-through`}>
-          ${originalAmount.toFixed(2)}
+          {formatPrice(originalAmount)}
         </span>
         <div className="flex items-center gap-2">
           <span className={`${sizes.final} text-orange-600`}>
-            ${finalAmount.toFixed(2)}
+            {formatPrice(finalAmount)}
           </span>
           {showBadge && (
             <span className={`${sizes.badge} bg-orange-100 text-orange-700 rounded-full font-semibold flex items-center gap-1`}>
@@ -92,7 +93,7 @@ export function PriceDisplay({
       </div>
       {variant !== 'compact' && (
         <span className="text-xs text-green-600 font-medium">
-          Save ${savings.toFixed(2)}
+          Save {formatPrice(savings)}
         </span>
       )}
     </div>
@@ -132,7 +133,7 @@ export function TotalPriceDisplay({
       <div className={`space-y-2 ${className}`}>
         <div className="flex justify-between items-center text-xl font-bold">
           <span>Total:</span>
-          <span>${originalAmount.toFixed(2)}</span>
+          <span>{formatPrice(originalAmount)}</span>
         </div>
       </div>
     )
@@ -144,14 +145,14 @@ export function TotalPriceDisplay({
         <>
           <div className="flex justify-between items-center text-sm text-gray-600">
             <span>Subtotal:</span>
-            <span>${originalAmount.toFixed(2)}</span>
+            <span>{formatPrice(originalAmount)}</span>
           </div>
           <div className="flex justify-between items-center text-sm text-green-600 font-medium">
             <span className="flex items-center gap-1">
               <Percent className="h-4 w-4" />
               PWA Discount ({discountPercentage}%):
             </span>
-            <span>-${discountAmount.toFixed(2)}</span>
+            <span>-{formatPrice(discountAmount)}</span>
           </div>
           <div className="border-t border-gray-200 pt-2" />
         </>
@@ -161,15 +162,15 @@ export function TotalPriceDisplay({
         <div className="flex flex-col items-end">
           {showBreakdown && (
             <span className="text-sm text-gray-500 line-through font-normal">
-              ${originalAmount.toFixed(2)}
+              {formatPrice(originalAmount)}
             </span>
           )}
-          <span className="text-orange-600">${finalAmount.toFixed(2)}</span>
+          <span className="text-orange-600">{formatPrice(finalAmount)}</span>
         </div>
       </div>
       {!showBreakdown && isEligible && (
         <p className="text-xs text-green-600 text-right">
-          You saved ${discountAmount.toFixed(2)} with PWA discount!
+          You saved {formatPrice(discountAmount)} with PWA discount!
         </p>
       )}
     </div>
