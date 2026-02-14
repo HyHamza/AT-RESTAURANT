@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
+import { createOfflineAwareSupabase } from './supabase-offline-handler'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -16,7 +17,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing required Supabase configuration. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set.')
 }
 
-export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+// Create base client
+const baseClient = createClient(supabaseUrl!, supabaseAnonKey!, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -31,8 +33,16 @@ export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
   },
 })
 
+// Wrap with offline handler for graceful offline behavior
+export const supabase = typeof window !== 'undefined' 
+  ? createOfflineAwareSupabase(baseClient)
+  : baseClient
+
 export function createSupabaseClient() {
-  return createBrowserClient(supabaseUrl!, supabaseAnonKey!)
+  const client = createBrowserClient(supabaseUrl!, supabaseAnonKey!)
+  return typeof window !== 'undefined' 
+    ? createOfflineAwareSupabase(client)
+    : client
 }
 
 export type Database = {

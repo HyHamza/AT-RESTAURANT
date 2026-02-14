@@ -293,15 +293,15 @@ export default function MenuPage() {
           
           {/* PWA Discount Banner */}
           {isEligible && (
-            <div className="mb-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 rounded-full p-2">
-                    <Percent className="h-5 w-5" />
+            <div className="mb-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl p-3 sm:p-4 shadow-lg">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                  <div className="bg-white/20 rounded-full p-1.5 sm:p-2 flex-shrink-0">
+                    <Percent className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div>
-                    <p className="font-bold text-lg">PWA Discount Active!</p>
-                    <p className="text-sm text-white/90">Get {discountPercentage}% off your entire order</p>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm sm:text-lg">PWA Discount Active!</p>
+                    <p className="text-xs sm:text-sm text-white/90">Get {discountPercentage}% off your entire order</p>
                   </div>
                 </div>
               </div>
@@ -323,12 +323,12 @@ export default function MenuPage() {
           {/* Search */}
           <div className="mt-6">
             <div className="relative max-w-md">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-text h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-text h-5 w-5 pointer-events-none z-10" />
               <Input
                 placeholder="Search menu items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-clean pl-12 h-12 text-base rounded-xl"
+                className="input-clean pl-12 h-12 text-base rounded-xl w-full"
               />
             </div>
           </div>

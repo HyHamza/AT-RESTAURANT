@@ -495,58 +495,62 @@ function OrderContent() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 bg-white rounded-xl border border-border hover:shadow-clean transition-all">
-                    <div className="w-16 h-16 bg-gray-light rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
-                      {item.image_url ? (
-                        <ImageWithModal
-                          src={item.image_url}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-pink-light flex items-center justify-center">
-                          <span className="text-muted-text text-xs font-medium">No Image</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-dark truncate text-base">{item.name}</h3>
-                      <p className="text-muted-text text-sm">{formatPrice(item.price)} each</p>
-                    </div>
-
-                    <div className="flex items-center space-x-3 bg-white rounded-lg border border-border p-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="h-8 w-8 rounded-md hover:bg-pink-light"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center font-semibold text-sm">{item.quantity}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="h-8 w-8 rounded-md hover:bg-pink-light"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-border hover:shadow-clean transition-all">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <div className="w-16 h-16 sm:w-16 sm:h-16 bg-gray-light rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                        {item.image_url ? (
+                          <ImageWithModal
+                            src={item.image_url}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-pink-light flex items-center justify-center">
+                            <span className="text-muted-text text-xs font-medium">No Image</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-dark text-sm sm:text-base line-clamp-2">{item.name}</h3>
+                        <p className="text-muted-text text-xs sm:text-sm">{formatPrice(item.price)} each</p>
+                      </div>
                     </div>
 
-                    <div className="text-right flex-shrink-0 min-w-0">
-                      <p className="font-bold text-dark text-base">{formatPrice(item.price * item.quantity)}</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeItem(item.id)}
-                        className="text-pink-primary hover:text-pink-primary hover:bg-pink-light p-1 h-auto mt-1 rounded-md"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                      <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-lg border border-border p-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md hover:bg-pink-light"
+                        >
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm">{item.quantity}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md hover:bg-pink-light"
+                        >
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-dark text-sm sm:text-base">{formatPrice(item.price * item.quantity)}</p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeItem(item.id)}
+                          className="text-pink-primary hover:text-pink-primary hover:bg-pink-light p-1 h-auto mt-1 rounded-md"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -590,9 +594,9 @@ function OrderContent() {
         {/* Right Column - Customer Information */}
         <div className="lg:col-span-1 space-y-6">
           {/* Customer Information - Professional Design */}
-          <Card className="card-white sticky top-24">
-            <CardHeader className="bg-pink-light border-b border-border">
-              <CardTitle className="flex items-center text-lg font-bold text-dark">
+          <Card className="card-white lg:sticky lg:top-24">
+            <CardHeader className="bg-pink-light border-b border-border p-4 sm:p-6">
+              <CardTitle className="flex items-center text-base sm:text-lg font-bold text-dark">
                 {authStep === 'authenticated' ? (
                   <>
                     <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
@@ -636,7 +640,7 @@ function OrderContent() {
 
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -644,13 +648,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Password *
                       </label>
                       <Input
@@ -658,7 +662,7 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Enter your password"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -715,20 +719,20 @@ function OrderContent() {
 
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -736,13 +740,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -750,13 +754,13 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Password * (minimum 6 characters)
                       </label>
                       <Input
@@ -764,13 +768,13 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Create a password"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Confirm Password *
                       </label>
                       <Input
@@ -778,7 +782,7 @@ function OrderContent() {
                         value={customerInfo.confirmPassword}
                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                         placeholder="Confirm your password"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -823,20 +827,20 @@ function OrderContent() {
                 <div className="space-y-6">
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -844,14 +848,14 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="input-clean h-12 text-base bg-gray-light"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base bg-gray-light"
                         required
                         disabled
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -859,18 +863,18 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
-                        className="input-clean h-12 text-base"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     {/* Location Picker */}
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3 flex items-center">
-                        <MapPin className="h-4 w-4 mr-2" />
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3 flex items-center">
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Delivery Location *
                       </label>
-                      <div className="border-2 border-border rounded-xl p-4 bg-gray-light">
+                      <div className="border-2 border-border rounded-xl p-3 sm:p-4 bg-gray-light">
                         <LocationPicker
                           onLocationSelect={handleLocationSelect}
                           initialLocation={deliveryLocation}
@@ -881,14 +885,14 @@ function OrderContent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-dark mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Special Instructions (Optional)
                       </label>
                       <textarea
                         value={customerInfo.notes}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
                         placeholder="Any special requests or dietary restrictions?"
-                        className="w-full px-4 py-3 border-2 border-border rounded-xl focus:outline-none focus:ring-0 focus:border-pink-primary text-base resize-none bg-white"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-border rounded-xl focus:outline-none focus:ring-0 focus:border-pink-primary text-sm sm:text-base resize-none bg-white"
                         rows={4}
                       />
                     </div>

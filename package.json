@@ -13,12 +13,13 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node src/generate-sw-manifest.js",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "preview": "next build && next start",
-    "clean": "rm -rf .next out node_modules/.cache"
+    "clean": "rm -rf .next out node_modules/.cache",
+    "generate-sw-manifest": "node scripts/generate-sw-manifest.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

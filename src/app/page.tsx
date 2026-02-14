@@ -301,14 +301,14 @@ export default function Home() {
           </div>
 
           {/* Search */}
-          <div className="mb-8 max-w-2xl mx-auto">
+          <div className="mb-8 max-w-2xl mx-auto px-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-text h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-text h-5 w-5 pointer-events-none z-10" />
               <Input
                 placeholder="Search for dishes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-clean pl-12 pr-4 py-4 text-lg rounded-xl"
+                className="input-clean pl-12 pr-4 h-12 sm:h-14 text-base sm:text-lg rounded-xl w-full"
               />
             </div>
           </div>

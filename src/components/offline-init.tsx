@@ -39,13 +39,13 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
     }
 
     // Register with aggressive cache bypass
-    console.log('[SW] Registering new service worker v9 (video-free)...')
+    console.log('[SW] Registering new service worker v10 (complete offline-first)...')
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none' // CRITICAL: Never cache sw.js
     })
 
-    console.log('[SW] Registration successful - v9 video-free')
+    console.log('[SW] Registration successful - v10 complete offline-first')
     window.__SW_REGISTERED__ = true
     window.__SW_REGISTERING__ = false
 

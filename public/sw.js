@@ -1,124 +1,260 @@
-// AT Restaurant - Service Worker v9 - NEVER CACHE VIDEOS
-const CACHE_VERSION = 'v9';
+// AT Restaurant - Service Worker v10 - Complete Offline-First with Pre-caching
+const CACHE_VERSION = 'v10';
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`;
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`;
+const PAGES_CACHE = `at-restaurant-pages-${CACHE_VERSION}`;
 
-// Minimal precache - only critical offline assets (NO VIDEO!)
-const PRECACHE_ASSETS = [
+// CRITICAL: Pre-cache ALL public pages and essential assets during install
+const PRECACHE_PAGES = [
+  '/',
+  '/menu',
+  '/order',
+  '/dashboard',
+  '/settings',
+  '/location',
+  '/order-status',
+  '/privacy',
+  '/terms',
   '/offline',
-  '/assets/icons/favicon.ico',
-  '/assets/icons/favicon.svg'
+  '/login',
+  '/signup'
 ];
 
-// Install event - skip waiting immediately, NO video caching
+// Essential static assets to pre-cache
+const PRECACHE_ASSETS = [
+  '/manifest.json',
+  '/assets/icons/favicon.ico',
+  '/assets/icons/favicon.svg',
+  '/assets/icons/favicon-16x16.png',
+  '/assets/icons/favicon-32x32.png',
+  '/assets/icons/apple-touch-icon.png',
+  '/assets/icons/android-chrome-192x192.png',
+  '/assets/icons/android-chrome-512x512.png'
+];
+
+// Supabase domains to intercept when offline
+const SUPABASE_DOMAINS = [
+  'supabase.co',
+  'supabase.com'
+];
+
+// Install event - Pre-cache ALL pages and assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v9 - Video-Free...');
+  console.log('[SW v10] Installing - Pre-caching all pages...');
   
   event.waitUntil(
     (async () => {
       try {
-        // Precache critical assets only (NO VIDEO!)
         const cache = await caches.open(CACHE_NAME);
+        const pagesCache = await caches.open(PAGES_CACHE);
+        
+        // Pre-cache static assets
+        console.log('[SW v10] Pre-caching static assets...');
         await Promise.allSettled(
           PRECACHE_ASSETS.map(url => 
             cache.add(url).catch(err => 
-              console.warn(`[SW] Failed to cache ${url}:`, err.message)
+              console.warn(`[SW v10] Failed to cache asset ${url}:`, err.message)
             )
           )
         );
-        console.log('[SW] Precache complete (video excluded)');
+        
+        // Pre-cache ALL pages
+        console.log('[SW v10] Pre-caching all pages...');
+        const pagePromises = PRECACHE_PAGES.map(async (url) => {
+          try {
+            const response = await fetch(url, {
+              credentials: 'same-origin',
+              headers: {
+                'Accept': 'text/html'
+              }
+            });
+            
+            if (response.ok) {
+              await pagesCache.put(url, response);
+              console.log(`[SW v10] ✓ Cached page: ${url}`);
+            } else {
+              console.warn(`[SW v10] ✗ Failed to cache ${url}: ${response.status}`);
+            }
+          } catch (err) {
+            console.warn(`[SW v10] ✗ Error caching ${url}:`, err.message);
+          }
+        });
+        
+        await Promise.allSettled(pagePromises);
+        
+        console.log('[SW v10] Pre-cache complete - All pages cached!');
       } catch (error) {
-        console.warn('[SW] Precache error:', error.message);
+        console.error('[SW v10] Pre-cache error:', error);
       }
       
-      // CRITICAL: Skip waiting immediately
+      // Skip waiting to activate immediately
       await self.skipWaiting();
-      console.log('[SW] Skipped waiting - activating immediately');
+      console.log('[SW v10] Skipped waiting - activating immediately');
     })()
   );
 });
 
-// Activate event - claim all clients immediately
+// Activate event - Clean old caches and claim clients
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v9 - Video-Free...');
+  console.log('[SW v10] Activating...');
   
   event.waitUntil(
     (async () => {
       try {
-        // Delete old caches (including any old video caches)
+        // Delete old caches
         const cacheNames = await caches.keys();
-        const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE];
+        const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE, PAGES_CACHE];
         
         await Promise.all(
           cacheNames
             .filter(name => !validCaches.includes(name))
             .map(name => {
-              console.log('[SW] Deleting old cache:', name);
+              console.log('[SW v10] Deleting old cache:', name);
               return caches.delete(name);
             })
         );
         
-        console.log('[SW] Cache cleanup complete (all video caches removed)');
+        console.log('[SW v10] Cache cleanup complete');
       } catch (error) {
-        console.warn('[SW] Cache cleanup error:', error.message);
+        console.warn('[SW v10] Cache cleanup error:', error);
       }
 
-      // CRITICAL: Claim all clients immediately
+      // Claim all clients immediately
       await self.clients.claim();
-      console.log('[SW] Claimed all clients - ready to serve');
+      console.log('[SW v10] Claimed all clients');
       
-      // Notify all clients that SW is ready
+      // Notify clients
       const clients = await self.clients.matchAll({ type: 'window' });
       clients.forEach(client => {
         client.postMessage({ 
           type: 'SW_ACTIVATED', 
           version: CACHE_VERSION,
+          precachedPages: PRECACHE_PAGES.length,
           timestamp: Date.now()
         });
       });
       
-      console.log('[SW] v9 fully activated and operational');
+      console.log('[SW v10] Fully activated - Offline-first ready!');
     })()
   );
 });
 
-// Fetch event - CRITICAL: Must ALWAYS return a response, never hang
+// Helper: Check if offline
+function isOffline() {
+  return !self.navigator.onLine;
+}
+
+// Helper: Check if Supabase request
+function isSupabaseRequest(url) {
+  return SUPABASE_DOMAINS.some(domain => url.hostname.includes(domain));
+}
+
+// Helper: Create offline response for Supabase auth
+function createOfflineAuthResponse() {
+  return new Response(
+    JSON.stringify({
+      error: 'offline',
+      message: 'Authentication unavailable offline',
+      offline: true
+    }),
+    {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Offline': 'true'
+      }
+    }
+  );
+}
+
+// Fetch event - Comprehensive offline handling
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') return;
-
-  // Skip non-HTTP protocols
-  if (!url.protocol.startsWith('http')) return;
-
-  // CRITICAL: Let Next.js internals pass through WITHOUT interception
-  if (
-    url.pathname.startsWith('/_next/') ||
-    url.searchParams.has('_rsc') ||
-    url.pathname.includes('/_next/data/') ||
-    url.pathname.startsWith('/__nextjs_') ||
-    url.pathname.includes('/webpack-')
-  ) {
-    return; // Don't intercept
+  // Skip non-GET requests (except for offline Supabase handling)
+  if (request.method !== 'GET' && !isSupabaseRequest(url)) {
+    return;
   }
 
-  // CRITICAL: Videos - ALWAYS network-only, NEVER cache
-  // This prevents the 16MB video from blocking page loads
+  // Skip non-HTTP protocols
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // CRITICAL: Intercept Supabase requests when offline
+  if (isSupabaseRequest(url)) {
+    event.respondWith(
+      (async () => {
+        // If offline, return cached response or offline response
+        if (isOffline()) {
+          console.log('[SW v10] Blocking Supabase request (offline):', url.pathname);
+          
+          // Try to return cached response
+          const cached = await caches.match(request);
+          if (cached) {
+            console.log('[SW v10] Returning cached Supabase response');
+            return cached;
+          }
+          
+          // Return offline response
+          return createOfflineAuthResponse();
+        }
+        
+        // Online - try network with timeout
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(request, {
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          // Cache successful responses
+          if (response.ok && request.method === 'GET') {
+            const responseClone = response.clone();
+            caches.open(API_CACHE).then(cache => 
+              cache.put(request, responseClone)
+            ).catch(() => {});
+          }
+          
+          return response;
+        } catch (error) {
+          console.log('[SW v10] Supabase request failed:', error.message);
+          
+          // Try cache
+          const cached = await caches.match(request);
+          if (cached) {
+            return cached;
+          }
+          
+          // Return offline response
+          return createOfflineAuthResponse();
+        }
+      })()
+    );
+    return;
+  }
+
+  // Skip Next.js internal requests (let them pass through)
+  if (
+    url.pathname.startsWith('/_next/webpack-hmr') ||
+    url.pathname.startsWith('/__nextjs_') ||
+    url.searchParams.has('_rsc')
+  ) {
+    return;
+  }
+
+  // VIDEOS: Always network-only, never cache
   if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm|ogg)$/)) {
     event.respondWith(
       (async () => {
         try {
-          console.log('[SW] Fetching video from network (no cache):', url.pathname);
-          // Direct network fetch with no-store to prevent any caching
-          const response = await fetch(request, { cache: 'no-store' });
-          console.log('[SW] Video fetched successfully:', url.pathname);
-          return response;
+          return await fetch(request, { cache: 'no-store' });
         } catch (error) {
-          console.log('[SW] Video network failed:', error.message);
-          // Return proper error response (don't throw!)
           return new Response(null, { 
             status: 503, 
             statusText: 'Video unavailable offline' 
@@ -129,15 +265,73 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // External images - CORS handling with proper fallback
+  // Next.js chunks and static files: Cache-first with network fallback
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      (async () => {
+        // Try cache first
+        const cached = await caches.match(request);
+        if (cached) {
+          console.log('[SW v10] Serving cached chunk:', url.pathname);
+          
+          // Update cache in background
+          if (!isOffline()) {
+            fetch(request).then(response => {
+              if (response.ok) {
+                caches.open(RUNTIME_CACHE).then(cache => 
+                  cache.put(request, response)
+                ).catch(() => {});
+              }
+            }).catch(() => {});
+          }
+          
+          return cached;
+        }
+
+        // Not in cache - fetch from network
+        try {
+          const response = await fetch(request);
+          
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(RUNTIME_CACHE).then(cache => 
+              cache.put(request, responseClone)
+            ).catch(() => {});
+          }
+          
+          return response;
+        } catch (error) {
+          console.warn('[SW v10] Chunk failed:', url.pathname);
+          
+          // Return empty response to prevent errors
+          if (request.destination === 'script') {
+            return new Response('console.log("[SW] Offline chunk");', {
+              status: 200,
+              headers: { 'Content-Type': 'application/javascript' }
+            });
+          }
+          
+          if (request.destination === 'style') {
+            return new Response('/* Offline */', {
+              status: 200,
+              headers: { 'Content-Type': 'text/css' }
+            });
+          }
+          
+          return new Response(null, { status: 503 });
+        }
+      })()
+    );
+    return;
+  }
+
+  // External images: CORS handling
   if (request.destination === 'image' && url.origin !== self.location.origin) {
     event.respondWith(
       (async () => {
         try {
-          const response = await fetch(request, { mode: 'no-cors' });
-          return response;
+          return await fetch(request, { mode: 'no-cors' });
         } catch (error) {
-          console.log('[SW] External image failed, returning placeholder');
           // Return 1x1 transparent GIF
           return new Response(
             new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
@@ -149,14 +343,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API - network first with background caching (non-blocking)
+  // API routes: Network-first with cache fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       (async () => {
         try {
           const response = await fetch(request);
           
-          // Cache in background (fire-and-forget)
           if (response.ok) {
             const responseClone = response.clone();
             caches.open(API_CACHE).then(cache => 
@@ -166,11 +359,13 @@ self.addEventListener('fetch', (event) => {
           
           return response;
         } catch (error) {
-          // Fallback to cache if offline
           const cached = await caches.match(request);
           return cached || new Response(
             JSON.stringify({ error: 'Offline', offline: true }),
-            { headers: { 'Content-Type': 'application/json' }, status: 503 }
+            { 
+              headers: { 'Content-Type': 'application/json' }, 
+              status: 503 
+            }
           );
         }
       })()
@@ -178,33 +373,57 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation - Network first, NEVER cache HTML
+  // NAVIGATION: Cache-first for pre-cached pages, network-first for others
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        try {
-          // Always fetch fresh HTML from network
-          const response = await fetch(request);
-          return response;
-        } catch (error) {
-          console.log('[SW] Navigation offline, trying cache:', url.pathname);
+        // Check if page is pre-cached
+        const pagesCache = await caches.open(PAGES_CACHE);
+        const cachedPage = await pagesCache.match(url.pathname);
+        
+        if (cachedPage) {
+          console.log('[SW v10] Serving pre-cached page:', url.pathname);
           
-          // Try to serve from cache first
-          const cached = await caches.match(request);
-          if (cached) {
-            console.log('[SW] Serving cached page:', url.pathname);
-            return cached;
+          // Update cache in background if online
+          if (!isOffline()) {
+            fetch(request).then(response => {
+              if (response.ok) {
+                pagesCache.put(url.pathname, response).catch(() => {});
+              }
+            }).catch(() => {});
           }
           
-          // Try offline page
-          const offlinePage = await caches.match('/offline');
+          return cachedPage;
+        }
+
+        // Not pre-cached - try network first
+        try {
+          const response = await fetch(request);
+          
+          // Cache successful navigation responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            pagesCache.put(url.pathname, responseClone).catch(() => {});
+          }
+          
+          return response;
+        } catch (error) {
+          console.log('[SW v10] Navigation offline:', url.pathname);
+          
+          // Try any cached version
+          const runtimeCache = await caches.open(RUNTIME_CACHE);
+          const runtimeCached = await runtimeCache.match(request);
+          if (runtimeCached) {
+            return runtimeCached;
+          }
+          
+          // Serve offline page
+          const offlinePage = await pagesCache.match('/offline');
           if (offlinePage) {
-            console.log('[SW] Serving offline page');
             return offlinePage;
           }
           
-          // Last resort: inline offline page
-          console.log('[SW] Serving inline offline page');
+          // Inline offline page
           return new Response(
             `<!DOCTYPE html>
             <html lang="en">
@@ -229,12 +448,12 @@ self.addEventListener('fetch', (event) => {
                 }
                 h1 {
                   color: #e11b70;
-                  font-size: 3em;
+                  font-size: 2.5em;
                   margin-bottom: 20px;
                 }
                 p {
                   color: #666;
-                  font-size: 1.2em;
+                  font-size: 1.1em;
                   line-height: 1.6;
                   margin-bottom: 30px;
                 }
@@ -252,8 +471,33 @@ self.addEventListener('fetch', (event) => {
                   background: #c01560;
                 }
                 .icon {
-                  font-size: 5em;
+                  font-size: 4em;
                   margin-bottom: 20px;
+                }
+                .cached-pages {
+                  margin-top: 30px;
+                  padding: 20px;
+                  background: white;
+                  border-radius: 12px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                .cached-pages h2 {
+                  font-size: 1.2em;
+                  color: #333;
+                  margin-bottom: 15px;
+                }
+                .cached-pages a {
+                  display: block;
+                  padding: 10px;
+                  margin: 5px 0;
+                  background: #fef5f9;
+                  color: #e11b70;
+                  text-decoration: none;
+                  border-radius: 6px;
+                  transition: background 0.2s;
+                }
+                .cached-pages a:hover {
+                  background: #fce4f0;
                 }
               </style>
             </head>
@@ -261,8 +505,17 @@ self.addEventListener('fetch', (event) => {
               <div class="container">
                 <div class="icon">📡</div>
                 <h1>You're Offline</h1>
-                <p>It looks like you've lost your internet connection. Please check your connection and try again.</p>
+                <p>No internet connection detected. You can still browse cached pages below.</p>
                 <button onclick="window.location.reload()">Try Again</button>
+                
+                <div class="cached-pages">
+                  <h2>Available Offline Pages</h2>
+                  <a href="/">Home</a>
+                  <a href="/menu">Menu</a>
+                  <a href="/order">Order</a>
+                  <a href="/dashboard">Dashboard</a>
+                  <a href="/settings">Settings</a>
+                </div>
               </div>
             </body>
             </html>`,
@@ -277,30 +530,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - cache first with background refresh (stale-while-revalidate)
+  // Static assets: Cache-first with stale-while-revalidate
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);
       
-      // Return cached immediately if available
       if (cached) {
-        // Refresh cache in background (fire-and-forget)
-        fetch(request).then(response => {
-          if (response.ok && url.origin === self.location.origin) {
-            caches.open(RUNTIME_CACHE).then(cache => 
-              cache.put(request, response)
-            ).catch(() => {});
-          }
-        }).catch(() => {});
+        // Update cache in background if online
+        if (!isOffline()) {
+          fetch(request).then(response => {
+            if (response.ok && url.origin === self.location.origin) {
+              caches.open(RUNTIME_CACHE).then(cache => 
+                cache.put(request, response)
+              ).catch(() => {});
+            }
+          }).catch(() => {});
+        }
         
         return cached;
       }
 
-      // Not in cache, fetch from network
+      // Not in cache - fetch from network
       try {
         const response = await fetch(request);
         
-        // Cache in background (fire-and-forget)
         if (response.ok && url.origin === self.location.origin) {
           const responseClone = response.clone();
           caches.open(RUNTIME_CACHE).then(cache => 
@@ -310,37 +563,15 @@ self.addEventListener('fetch', (event) => {
         
         return response;
       } catch (error) {
-        console.log('[SW] Static asset failed:', url.pathname, error.message);
-        
         // Fallback for images
         if (request.destination === 'image') {
-          console.log('[SW] Returning placeholder image');
           return new Response(
             new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
             { status: 200, headers: { 'Content-Type': 'image/gif' } }
           );
         }
         
-        // For JS/CSS chunks, return empty response to prevent errors
-        if (request.destination === 'script') {
-          return new Response('console.log("[SW] Offline chunk skipped");', {
-            status: 200,
-            headers: { 'Content-Type': 'application/javascript' }
-          });
-        }
-        
-        if (request.destination === 'style') {
-          return new Response('/* Offline chunk skipped */', {
-            status: 200,
-            headers: { 'Content-Type': 'text/css' }
-          });
-        }
-        
-        // For other assets, return a proper error response
-        return new Response(null, {
-          status: 503,
-          statusText: 'Service Unavailable'
-        });
+        return new Response(null, { status: 503 });
       }
     })()
   );
@@ -352,15 +583,13 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 
-  if (event.data?.type === 'CACHE_MENU_DATA') {
-    caches.open(API_CACHE).then(cache => {
-      cache.put(
-        new Request('/api/menu'),
-        new Response(JSON.stringify(event.data.data), {
-          headers: { 'Content-Type': 'application/json' }
-        })
-      ).catch(() => {});
-    }).catch(() => {});
+  if (event.data?.type === 'GET_CACHED_PAGES') {
+    caches.open(PAGES_CACHE).then(cache => {
+      cache.keys().then(requests => {
+        const urls = requests.map(req => req.url);
+        event.ports[0]?.postMessage({ cachedPages: urls });
+      });
+    });
   }
 
   if (event.data?.type === 'CLEAR_CACHE') {
@@ -411,4 +640,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[SW] v9 Video-Free - Loaded successfully');
+console.log('[SW v10] Loaded - Complete offline-first with pre-caching enabled');
