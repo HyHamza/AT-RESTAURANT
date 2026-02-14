@@ -14,6 +14,8 @@ import { offlineUtils } from '@/lib/offline-db'
 import { OrderSkeleton } from '@/components/skeletons/order-skeleton'
 import { LocationPicker } from '@/components/location-picker'
 import { LocationData } from '@/lib/location-service'
+import { useAuth } from '@/hooks/use-auth'
+import { useLocation } from '@/hooks/use-location'
 import { 
   Plus, 
   Minus, 
@@ -33,7 +35,13 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 function OrderContent() {
   const { items, total, discountAmount, finalTotal, updateQuantity, removeItem, clearCart } = useCart()
   const toast = useToastHelpers()
-  const [user, setUser] = useState<any>(null)
+  
+  // Use new auth hook with offline support
+  const { user, isAuthenticated, loading: authLoading, signIn, signUp } = useAuth()
+  
+  // Use new location hook
+  const { lastUsedLocation, loadLastUsed, saveLocation } = useLocation()
+  
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     email: '',
@@ -50,6 +58,45 @@ function OrderContent() {
   const [authError, setAuthError] = useState('')
   const router = useRouter()
 
+  // Set auth step based on authentication status
+  useEffect(() => {
+    if (authLoading) {
+      setAuthStep('check')
+    } else if (isAuthenticated && user) {
+      setAuthStep('authenticated')
+      
+      // Pre-fill customer info from user
+      setCustomerInfo(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      }))
+    } else {
+      setAuthStep('login')
+    }
+  }, [isAuthenticated, user, authLoading])
+
+  // Load last used location when user is authenticated
+  useEffect(() => {
+    if (user?.id) {
+      loadLastUsed(user.id)
+    }
+  }, [user, loadLastUsed])
+
+  // Auto-fill location when loaded
+  useEffect(() => {
+    if (lastUsedLocation) {
+      setDeliveryLocation({
+        latitude: lastUsedLocation.latitude,
+        longitude: lastUsedLocation.longitude,
+        address: lastUsedLocation.addressLine1,
+        method: 'manual',
+        timestamp: new Date().toISOString()
+      })
+    }
+  }, [lastUsedLocation])
+
   useEffect(() => {
     // Set initial online status
     setIsOnline(navigator.onLine)
@@ -61,40 +108,11 @@ function OrderContent() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     
-    checkAuth()
-    
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [])
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session?.user) {
-        setUser(session.user)
-        setAuthStep('authenticated')
-        
-        // Pre-fill customer info from user profile
-        setCustomerInfo(prev => ({
-          ...prev,
-          name: session.user.user_metadata?.full_name || '',
-          email: session.user.email || '',
-          phone: session.user.user_metadata?.phone || ''
-        }))
-
-        // Load user's default location if available
-        loadUserDefaultLocation(session.user.id)
-      } else {
-        setAuthStep('login')
-      }
-    } catch (error) {
-      console.error('[AT RESTAURANT - Order] Auth check error:', error)
-      setAuthStep('login')
-    }
-  }
 
   const loadUserDefaultLocation = async (userId: string) => {
     try {
@@ -181,34 +199,29 @@ function OrderContent() {
     setAuthError('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: customerInfo.email,
-        password: customerInfo.password
-      })
+      const { success, error } = await signIn(customerInfo.email, customerInfo.password)
 
       if (error) {
         // If user doesn't exist, suggest signup
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.includes('Invalid login credentials')) {
           setAuthError('Account not found. Would you like to create a new account?')
-          return
+        } else {
+          setAuthError(error)
         }
-        
-        throw error
+        return
       }
 
-      if (data.user) {
-        setUser(data.user)
+      if (success) {
         setAuthStep('authenticated')
         
-        // Update customer info with user data
+        // Clear password fields
         setCustomerInfo(prev => ({
           ...prev,
-          name: data.user.user_metadata?.full_name || prev.name,
-          email: data.user.email || prev.email,
-          phone: data.user.user_metadata?.phone || prev.phone,
           password: '',
           confirmPassword: ''
         }))
+        
+        toast.success('Welcome back!', 'You are now logged in')
       }
     } catch (error: any) {
       console.error('Login failed:', error)
@@ -228,50 +241,34 @@ function OrderContent() {
     setAuthError('')
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: customerInfo.email,
-        password: customerInfo.password,
-        options: {
-          data: {
-            full_name: customerInfo.name,
-            phone: customerInfo.phone
-          }
+      const { success, error } = await signUp(
+        customerInfo.email,
+        customerInfo.password,
+        {
+          full_name: customerInfo.name,
+          phone: customerInfo.phone
         }
-      })
+      )
 
       if (error) {
-        throw error
+        setAuthError(error)
+        return
       }
 
-      if (data.user) {
-        // Create user record in our users table
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: customerInfo.name,
-            phone: customerInfo.phone
-          })
-
-        if (userError) {
-          // User record creation warning, but continue
-        }
-
-        // If user is immediately confirmed (no email verification required)
-        if (data.session) {
-          setUser(data.user)
-          setAuthStep('authenticated')
-          setCustomerInfo(prev => ({
-            ...prev,
-            password: '',
-            confirmPassword: ''
-          }))
-        } else {
-          // Email confirmation required
-          setAuthError('Please check your email and click the confirmation link, then try logging in.')
-          setAuthStep('login')
-        }
+      if (success) {
+        setAuthStep('authenticated')
+        
+        // Clear password fields
+        setCustomerInfo(prev => ({
+          ...prev,
+          password: '',
+          confirmPassword: ''
+        }))
+        
+        toast.success('Account created!', 'Welcome to AT Restaurant')
+      } else {
+        setAuthError('Please check your email to confirm your account, then try logging in.')
+        setAuthStep('login')
       }
     } catch (error: any) {
       console.error('Account creation failed:', error)
@@ -280,7 +277,6 @@ function OrderContent() {
       setIsCreatingAccount(false)
     }
   }
-
   const handleSubmitOrder = async () => {
     if (!validateOrderForm()) {
       if (!deliveryLocation) {
@@ -300,6 +296,20 @@ function OrderContent() {
     setIsSubmitting(true)
 
     try {
+      // Save location for future use
+      if (user && deliveryLocation) {
+        try {
+          await saveLocation(user.id, {
+            addressLine1: deliveryLocation.address || 'Current location',
+            latitude: deliveryLocation.latitude,
+            longitude: deliveryLocation.longitude,
+            isPrimary: false
+          })
+        } catch (error) {
+          console.warn('Failed to save location:', error)
+        }
+      }
+
       const orderId = generateOrderId()
       
       const orderData = {
