@@ -25,8 +25,34 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
   const { addItem } = useCart()
   const toast = useToastHelpers()
+
+  // Network state detection
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+
+    const handleOnline = () => {
+      console.log('[Homepage] Network restored - refreshing data')
+      setIsOnline(true)
+      // Force reload data when coming back online
+      loadMenuData()
+    }
+
+    const handleOffline = () => {
+      console.log('[Homepage] Network lost')
+      setIsOnline(false)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     loadMenuData()

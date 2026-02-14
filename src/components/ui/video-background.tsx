@@ -9,6 +9,7 @@ interface VideoBackgroundProps {
   blur?: number;
   overlayOpacity?: number;
   enableParallax?: boolean;
+  poster?: string;
 }
 
 export function VideoBackground({ 
@@ -17,26 +18,73 @@ export function VideoBackground({
   overlayClassName = '',
   blur = 0.5,
   overlayOpacity = 0.7,
-  enableParallax = true
+  enableParallax = true,
+  poster
 }: VideoBackgroundProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
+  // Network state detection
   useEffect(() => {
-    // CRITICAL: Delay video loading to prevent blocking page load
-    // This ensures the page renders immediately with the fallback gradient
+    setIsOnline(navigator.onLine);
+
+    const handleOnline = () => {
+      console.log('[Video Background] Network restored');
+      setIsOnline(true);
+      setVideoError(false); // Reset error state
+      // Retry video load if it failed
+      if (!isLoaded && shouldLoadVideo) {
+        setShouldLoadVideo(false);
+        setTimeout(() => setShouldLoadVideo(true), 100);
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('[Video Background] Network lost');
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isLoaded, shouldLoadVideo]);
+
+  // Delayed video loading
+  useEffect(() => {
+    // Don't load video if offline
+    if (!isOnline) {
+      console.log('[Video Background] Skipping video load (offline)');
+      return;
+    }
+
+    // Check connection speed (if available)
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    const slowConnection = connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g');
+
+    if (slowConnection) {
+      console.log('[Video Background] Slow connection detected, skipping video');
+      setVideoError(true);
+      return;
+    }
+
+    // Delay video loading to prevent blocking page load
     const timer = setTimeout(() => {
       setShouldLoadVideo(true);
-    }, 500); // Wait 500ms before starting video load
+    }, 1000); // Increased delay to 1 second
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isOnline]);
 
   useEffect(() => {
-    if (!shouldLoadVideo) return;
+    if (!shouldLoadVideo || !isOnline) return;
     
     const video = videoRef.current;
     if (!video) return;
@@ -109,7 +157,7 @@ export function VideoBackground({
     };
 
     // Start playing after a short delay
-    const playTimer = setTimeout(playVideo, 100);
+    const playTimer = setTimeout(playVideo, 200);
 
     return () => {
       clearTimeout(playTimer);
@@ -118,7 +166,7 @@ export function VideoBackground({
       video.removeEventListener('contextmenu', preventContextMenu);
       video.removeEventListener('dragstart', preventDrag);
     };
-  }, [src, shouldLoadVideo]);
+  }, [src, shouldLoadVideo, isOnline]);
 
   return (
     <div 
@@ -133,15 +181,24 @@ export function VideoBackground({
           background: 'linear-gradient(135deg, hsl(337, 100%, 98%) 0%, hsl(0, 0%, 100%) 50%, hsl(337, 100%, 98%) 100%)'
         }}
       />
+
+      {/* Poster image if provided - shows while video loads */}
+      {poster && !isLoaded && !videoError && (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${poster})` }}
+        />
+      )}
       
-      {/* Video element - only load when ready */}
-      {shouldLoadVideo && !videoError && (
+      {/* Video element - only load when ready and online */}
+      {shouldLoadVideo && !videoError && isOnline && (
         <video
           ref={videoRef}
           loop
           muted
           playsInline
           preload="metadata"
+          poster={poster}
           controlsList="nodownload noremoteplayback nofullscreen"
           disablePictureInPicture
           disableRemotePlayback
