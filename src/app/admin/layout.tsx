@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AdminPWAInstall } from '@/components/admin-pwa-install'
 import { AdminNotifications } from '@/components/admin-notifications'
+import { AdminHead } from '@/components/admin-head'
 import { useIsMobile, useIsDesktop } from '@/hooks/use-media-query'
 
 interface AdminLayoutProps {
@@ -236,6 +237,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Admin PWA Head Configuration */}
+      <AdminHead />
+      
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && isMobile && (
         <div 

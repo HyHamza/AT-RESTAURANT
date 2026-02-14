@@ -1,30 +1,30 @@
-// AT Restaurant Admin - Service Worker v1
+// AT Restaurant - Admin Service Worker v1
 const CACHE_VERSION = 'admin-v1';
 const CACHE_NAME = `at-restaurant-admin-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-admin-runtime-${CACHE_VERSION}`;
 const API_CACHE = `at-restaurant-admin-api-${CACHE_VERSION}`;
+const PAGES_CACHE = `at-restaurant-admin-pages-${CACHE_VERSION}`;
 
-// Admin-specific precache assets
-const PRECACHE_ASSETS = [
+// Pre-cache admin pages during install
+const PRECACHE_PAGES = [
   '/admin',
   '/admin/orders',
   '/admin/menu',
+  '/admin/customers',
   '/admin/users',
-  '/assets/icons/favicon.ico',
-  '/assets/icons/favicon.svg'
+  '/admin/pwa-test'
 ];
 
-// Install event
-self.addEventListener('install', (event) => {
-  console.log('[Admin SW] Installing v1...');
-  
-  event.waitUntil(
-    (async () => {
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        await Promise.allSettled(
-          PRECACHE_ASSETS.map(url => 
-            cache.add(url).catch(err => 
+// Essential admin assets to pre-cache
+const PRECACHE_ASSETS = [
+  '/admin-manifest.json',
+  '/assets/admin-icons/admin-icon-192.png',
+  '/assets/admin-icons/admin-icon-512.png'
+];
+
+// Supabase domains to intercept when offline
+const SUPABASE_DOMAINS = [
+  'supabase.co',
               console.warn(`[Admin SW] Failed to cache ${url}:`, err.message)
             )
           )
