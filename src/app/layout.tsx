@@ -11,7 +11,6 @@ import { ToastProvider } from "@/components/ui/toast";
 import { PWAInstallDiscount } from "@/components/pwa-install-discount";
 import { OfflineIndicator } from "@/components/offline-status";
 import { OfflineInit } from "@/components/offline-init";
-import { UserServiceWorkerRegister } from "@/components/user-sw-register";
 
 
 const inter = Inter({
@@ -57,9 +56,6 @@ export default function RootLayout({
           <AdminProvider>
             <PWADiscountProvider>
               <CartProvider>
-                {/* User Service Worker Registration */}
-                <UserServiceWorkerRegister />
-                
                 <OfflineInit />
                 
                 <div className="min-h-screen flex flex-col">
