@@ -120,8 +120,19 @@ export class SyncService {
         customer_email: order.customer_email,
         customer_phone: order.customer_phone,
         total_amount: order.total_amount,
+        original_amount: order.original_amount || order.total_amount,
+        discount_amount: order.discount_amount || 0,
+        discount_percentage: order.discount_percentage || 0,
+        discount_type: order.discount_type || null,
+        pwa_discount_applied: order.pwa_discount_applied || false,
         status: order.status,
         notes: order.notes || null,
+        delivery_latitude: order.delivery_latitude || null,
+        delivery_longitude: order.delivery_longitude || null,
+        delivery_address: order.delivery_address || null,
+        location_method: order.location_method || 'none',
+        location_accuracy: order.location_accuracy || null,
+        location_timestamp: order.location_timestamp || null,
         created_at: order.created_at
       })
       .select()
@@ -171,12 +182,14 @@ export class SyncService {
     await offlineUtils.markOrderSynced(order.id)
 
     // Log successful sync
-    await offlineDb.syncLogs.add({
-      action: 'order_sync',
-      status: 'success',
-      details: `Order ${order.id} synced successfully`,
-      created_at: new Date().toISOString()
-    })
+    if (offlineDb) {
+      await offlineDb.syncLogs.add({
+        action: 'order_sync',
+        status: 'success',
+        details: `Order ${order.id} synced successfully`,
+        created_at: new Date().toISOString()
+      })
+    }
   }
 
   // Schedule retry with exponential backoff
@@ -193,7 +206,7 @@ export class SyncService {
     const timeout = setTimeout(async () => {
       this.retryTimeouts.delete(orderId)
       
-      if (networkUtils.isOnline() && !this.syncInProgress) {
+      if (networkUtils.isOnline() && !this.syncInProgress && offlineDb) {
         try {
           const order = await offlineDb.orders.get(orderId)
           if (order && order.synced === 0) {
@@ -220,12 +233,14 @@ export class SyncService {
     }
 
     // Reset sync attempts for all orders to give them another chance
-    const pendingOrders = await offlineUtils.getUnsyncedOrders()
-    for (const order of pendingOrders) {
-      await offlineDb.orders.update(order.id, {
-        sync_attempts: 0,
-        sync_error: undefined
-      })
+    if (offlineDb) {
+      const pendingOrders = await offlineUtils.getUnsyncedOrders()
+      for (const order of pendingOrders) {
+        await offlineDb.orders.update(order.id, {
+          sync_attempts: 0,
+          sync_error: undefined
+        })
+      }
     }
 
     return await this.syncPendingOrders()
@@ -240,10 +255,12 @@ export class SyncService {
   }> {
     const pendingOrders = await offlineUtils.getUnsyncedOrders()
     
-    const lastSyncLog = await offlineDb.syncLogs
-      .where('action').equals('order_sync')
-      .reverse()
-      .first()
+    const lastSyncLog = offlineDb 
+      ? await offlineDb.syncLogs
+          .where('action').equals('order_sync')
+          .reverse()
+          .first()
+      : null
 
     return {
       pendingOrders: pendingOrders.length,

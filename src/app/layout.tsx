@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./foodpanda-theme.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { CartProvider } from "@/contexts/cart-context";
 import { AdminProvider } from "@/contexts/admin-context";
-import { PWAInstall } from "@/components/pwa-install";
+import { PWADiscountProvider } from "@/contexts/pwa-discount-context";
+import { ToastProvider } from "@/components/ui/toast";
+import { PWAInstallDiscount } from "@/components/pwa-install-discount";
 import { OfflineIndicator } from "@/components/offline-status";
 import { OfflineInit } from "@/components/offline-init";
 
@@ -25,7 +28,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#f97316",
+  themeColor: "#e11b70",
 };
 
 export default function RootLayout({
@@ -37,31 +40,40 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#f97316" />
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <meta name="theme-color" content="#e11b70" />
+        <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico" />
+        <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="AT RESTAURANT" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AdminProvider>
-          <CartProvider>
-            <OfflineInit />
-            
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            
-            {/* Simple offline indicator - only shows when offline */}
-            <OfflineIndicator />
-            
-            <PWAInstall />
-          </CartProvider>
-        </AdminProvider>
+        <ToastProvider>
+          <AdminProvider>
+            <PWADiscountProvider>
+              <CartProvider>
+                <OfflineInit />
+                
+                <div className="min-h-screen flex flex-col">
+                  <Header />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+                
+                {/* Simple offline indicator - only shows when offline */}
+                <OfflineIndicator />
+                
+                <PWAInstallDiscount />
+              </CartProvider>
+            </PWADiscountProvider>
+          </AdminProvider>
+        </ToastProvider>
       </body>
     </html>
   );

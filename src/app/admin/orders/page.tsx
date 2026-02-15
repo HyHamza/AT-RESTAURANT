@@ -6,8 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Search, Eye, Clock, Utensils, Package, CheckCircle, X, Bell, MapPin, ExternalLink } from 'lucide-react'
+import { Search, Eye, Clock, Utensils, Package, CheckCircle, X, Bell, MapPin, ExternalLink, Filter } from 'lucide-react'
 import type { Order, OrderItem } from '@/types'
+import { ExportButton } from '@/components/ui/export-button'
+import { ExportColumn, formatDateForExport, formatCurrencyForExport, generateFilename } from '@/lib/export-utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { OrderCard } from '@/components/admin/order-card'
+import { useIsMobile } from '@/hooks/use-media-query'
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -17,6 +22,8 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     loadOrders()
@@ -48,15 +55,23 @@ export default function AdminOrdersPage() {
 
   const loadOrders = async () => {
     try {
+      console.log('[AT RESTAURANT - Admin Orders] Loading orders...')
+      
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to load orders:', error)
+        throw error
+      }
+      
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully loaded ${data?.length || 0} orders`)
       setOrders(data || [])
-    } catch (error) {
-      console.error('Error loading orders:', error)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Load orders error:', error)
+      alert(`Failed to load orders: ${error.message || 'Unknown error'}. Please refresh the page.`)
     } finally {
       setLoading(false)
     }
@@ -64,6 +79,8 @@ export default function AdminOrdersPage() {
 
   const loadOrderItems = async (orderId: string) => {
     try {
+      console.log(`[AT RESTAURANT - Admin Orders] Loading items for order ${orderId}`)
+      
       const { data, error } = await supabase
         .from('order_items')
         .select(`
@@ -72,10 +89,16 @@ export default function AdminOrdersPage() {
         `)
         .eq('order_id', orderId)
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to load order items:', error)
+        throw error
+      }
+      
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully loaded ${data?.length || 0} items for order ${orderId}`)
       setOrderItems(data || [])
-    } catch (error) {
-      console.error('Error loading order items:', error)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Load order items error:', error)
+      alert(`Failed to load order items: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -84,7 +107,7 @@ export default function AdminOrdersPage() {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('New Order Received!', {
         body: `Order #${order.id} from ${order.customer_name} - ${formatPrice(order.total_amount)}`,
-        icon: '/favicon.ico'
+        icon: '/assets/icons/android-chrome-192x192.png'
       })
     }
     
@@ -93,6 +116,8 @@ export default function AdminOrdersPage() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      console.log(`[AT RESTAURANT - Admin Orders] Updating order ${orderId} status to ${newStatus}`)
+      
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -101,16 +126,24 @@ export default function AdminOrdersPage() {
         })
         .eq('id', orderId)
 
-      if (error) throw error
+      if (error) {
+        console.error('[AT RESTAURANT - Admin Orders] Failed to update order status:', error)
+        throw error
+      }
 
       // Add status log
-      await supabase
+      const { error: logError } = await supabase
         .from('order_status_logs')
         .insert({
           order_id: orderId,
           status: newStatus,
           notes: `Status updated to ${newStatus} by admin`
         })
+
+      if (logError) {
+        console.warn('[AT RESTAURANT - Admin Orders] Failed to add status log:', logError)
+        // Don't throw here as the main update succeeded
+      }
 
       // Update local state
       setOrders(prev => prev.map(order => 
@@ -122,9 +155,14 @@ export default function AdminOrdersPage() {
       if (selectedOrder?.id === orderId) {
         setSelectedOrder(prev => prev ? { ...prev, status: newStatus as any } : null)
       }
-    } catch (error) {
-      console.error('Error updating order status:', error)
-      alert('Failed to update order status')
+
+      console.log(`[AT RESTAURANT - Admin Orders] Successfully updated order ${orderId} to ${newStatus}`)
+      
+      // Show success feedback
+      alert(`Order #${orderId} status updated to ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`)
+    } catch (error: any) {
+      console.error('[AT RESTAURANT - Admin Orders] Update status error:', error)
+      alert(`Failed to update order status: ${error.message || 'Unknown error'}. Please try again.`)
     }
   }
 
@@ -144,6 +182,20 @@ export default function AdminOrdersPage() {
     
     return matchesSearch && matchesStatus
   })
+
+  // Export columns configuration
+  const exportColumns: ExportColumn[] = [
+    { key: 'id', label: 'Order ID' },
+    { key: 'customer_name', label: 'Customer Name' },
+    { key: 'customer_email', label: 'Email' },
+    { key: 'customer_phone', label: 'Phone' },
+    { key: 'total_amount', label: 'Total Amount', format: formatCurrencyForExport },
+    { key: 'status', label: 'Status', format: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+    { key: 'delivery_address', label: 'Delivery Address' },
+    { key: 'notes', label: 'Special Instructions' },
+    { key: 'created_at', label: 'Order Date', format: formatDateForExport },
+    { key: 'updated_at', label: 'Last Updated', format: formatDateForExport }
+  ]
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -208,29 +260,38 @@ export default function AdminOrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
-          <p className="text-gray-600">Manage and track all customer orders</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders Management</h1>
+          <p className="text-gray-600 mt-1">Manage and track all customer orders</p>
         </div>
-        <Button
-          onClick={() => {
-            if ('Notification' in window && Notification.permission === 'default') {
-              Notification.requestPermission()
-            }
-          }}
-          variant="outline"
-        >
-          <Bell className="h-4 w-4 mr-2" />
-          Enable Notifications
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <ExportButton
+            data={filteredOrders}
+            columns={exportColumns}
+            filename={generateFilename(`orders_${statusFilter}`)}
+            className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
+          />
+          <Button
+            onClick={() => {
+              if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission()
+              }
+            }}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            <Bell className="h-4 w-4 mr-2" />
+            Enable Notifications
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -277,41 +338,42 @@ export default function AdminOrdersPage() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={order.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-4">
                   <div className="flex items-center space-x-4">
-                    <div className={`p-2 rounded-full ${getStatusColor(order.status)}`}>
+                    <div className={`p-2 rounded-full ${getStatusColor(order.status)} flex-shrink-0`}>
                       {getStatusIcon(order.status)}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold">#{order.id}</p>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
+                      <p className="text-sm text-gray-600 truncate">{order.customer_name}</p>
                       <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:space-x-4">
+                    <div className="text-left sm:text-right">
                       <p className="font-semibold">{formatPrice(order.total_amount)}</p>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </span>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewOrder(order)}
+                        className="flex-1 sm:flex-none"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
+                        <Eye className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">View</span>
                       </Button>
                       
                       {getNextStatus(order.status) && (
                         <Button
                           size="sm"
                           onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
-                          className="bg-orange-500 hover:bg-orange-600"
+                          className="bg-orange-500 hover:bg-orange-600 flex-1 sm:flex-none text-xs sm:text-sm"
                         >
                           {getNextStatusLabel(order.status)}
                         </Button>
@@ -322,6 +384,7 @@ export default function AdminOrdersPage() {
                           size="sm"
                           variant="destructive"
                           onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                          className="flex-1 sm:flex-none"
                         >
                           Cancel
                         </Button>

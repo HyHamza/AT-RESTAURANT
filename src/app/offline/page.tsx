@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function OfflinePageSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
           <Skeleton className="w-16 h-16 rounded-full mx-auto mb-4" />
@@ -30,7 +30,7 @@ function OfflinePageSkeleton() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {[1, 2].map((i) => (
-            <Card key={i}>
+            <Card key={i} className="card-white">
               <CardHeader>
                 <Skeleton className="h-6 w-32" />
               </CardHeader>
@@ -42,14 +42,14 @@ function OfflinePageSkeleton() {
           ))}
         </div>
 
-        <Card>
+        <Card className="card-white">
           <CardHeader>
             <Skeleton className="h-6 w-40" />
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="text-center p-4 border rounded-lg">
+                <div key={i} className="text-center p-4 border border-border rounded-lg">
                   <Skeleton className="h-8 w-12 mx-auto mb-2" />
                   <Skeleton className="h-4 w-16 mx-auto" />
                 </div>
@@ -80,27 +80,27 @@ export default function OfflinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="icon-pink w-16 h-16 mx-auto mb-4">
             <Smartphone className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Connection Unavailable</h1>
-          <p className="text-gray-600">All features remain fully accessible</p>
+          <h1 className="text-3xl font-bold text-dark mb-2">Connection Unavailable</h1>
+          <p className="text-muted-text">All features remain fully accessible</p>
         </div>
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Connection Status */}
-          <Card>
+          <Card className="card-white">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 {isOnline ? (
                   <Wifi className="h-5 w-5 text-green-500" />
                 ) : (
-                  <WifiOff className="h-5 w-5 text-gray-500" />
+                  <WifiOff className="h-5 w-5 text-muted-text" />
                 )}
                 <span>Connection Status</span>
               </CardTitle>
@@ -115,16 +115,16 @@ export default function OfflinePage() {
                   </div>
                 ) : (
                   <div>
-                    <WifiOff className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Unavailable</h3>
-                    <p className="text-gray-600">All features remain accessible</p>
+                    <WifiOff className="h-12 w-12 text-muted-text mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-dark mb-2">Connection Unavailable</h3>
+                    <p className="text-muted-text">All features remain accessible</p>
                   </div>
                 )}
               </div>
               <Button 
                 onClick={() => window.location.reload()} 
                 variant="outline" 
-                className="w-full"
+                className="w-full border-2 border-border hover:border-pink-primary hover:text-pink-primary"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh Status
@@ -133,35 +133,35 @@ export default function OfflinePage() {
           </Card>
 
           {/* Quick Actions */}
-          <Card>
+          <Card className="card-white">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <Link href="/menu" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start border-2 border-border hover:border-pink-primary hover:text-pink-primary">
                     <MenuIcon className="h-4 w-4 mr-2" />
                     Browse Menu
                   </Button>
                 </Link>
                 
                 <Link href="/order" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start border-2 border-border hover:border-pink-primary hover:text-pink-primary">
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     View Cart
                   </Button>
                 </Link>
                 
                 <Link href="/order-status" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start border-2 border-border hover:border-pink-primary hover:text-pink-primary">
                     <Clock className="h-4 w-4 mr-2" />
                     Order Status
                   </Button>
                 </Link>
                 
                 <Link href="/settings" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start border-2 border-border hover:border-pink-primary hover:text-pink-primary">
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     Settings
                   </Button>

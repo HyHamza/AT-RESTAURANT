@@ -1,0 +1,305 @@
+/* ========================================
+   MODERN CERISE THEME - PREMIUM COMPONENTS
+   Color Scheme: #e11b70 (Cerise), #353535 (Mine Shaft), #51323f (Congo Brown)
+   ======================================== */
+
+/* Premium Card Styles */
+.card-modern {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-modern:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(225, 27, 112, 0.3);
+  border-color: hsl(var(--cerise) / 0.5);
+}
+
+/* Premium Button Styles */
+.btn-modern-primary {
+  background: linear-gradient(135deg, hsl(var(--cerise)) 0%, hsl(var(--cerise-dark)) 100%);
+  color: hsl(var(--primary-foreground));
+  border: none;
+  box-shadow: 0 4px 15px rgba(225, 27, 112, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-modern-primary:hover {
+  background: linear-gradient(135deg, hsl(var(--cerise-light)) 0%, hsl(var(--cerise)) 100%);
+  box-shadow: 0 6px 25px rgba(225, 27, 112, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-modern-secondary {
+  background: linear-gradient(135deg, hsl(var(--mine-shaft)) 0%, hsl(var(--mine-shaft-light)) 100%);
+  color: hsl(var(--foreground));
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-modern-secondary:hover {
+  background: linear-gradient(135deg, hsl(var(--mine-shaft-light)) 0%, hsl(var(--mine-shaft)) 100%);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-modern-outline {
+  background: transparent;
+  color: hsl(var(--cerise-light));
+  border: 2px solid hsl(var(--cerise));
+  transition: all 0.3s ease;
+}
+
+.btn-modern-outline:hover {
+  background: hsl(var(--cerise) / 0.1);
+  border-color: hsl(var(--cerise-light));
+  color: hsl(var(--cerise-light));
+}
+
+/* Modern Glass Morphism */
+.glass-modern {
+  background: rgba(225, 27, 112, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(225, 27, 112, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-dark {
+  background: rgba(18, 18, 18, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Premium Text Shadows */
+.text-shadow-modern {
+  text-shadow: 0 2px 20px rgba(225, 27, 112, 0.5),
+               0 4px 40px rgba(225, 27, 112, 0.3);
+}
+
+/* Modern Borders */
+.border-modern {
+  border-color: hsl(var(--cerise) / 0.3);
+}
+
+/* Premium Hover Effects */
+.hover-lift-modern {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift-modern:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(225, 27, 112, 0.3);
+}
+
+/* Modern Dividers */
+.divider-modern {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    hsl(var(--cerise) / 0.5) 50%, 
+    transparent 100%
+  );
+}
+
+.divider-cerise {
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    hsl(var(--cerise)) 50%, 
+    transparent 100%
+  );
+}
+
+/* Premium Badge Styles */
+.badge-modern {
+  background: linear-gradient(135deg, hsl(var(--cerise)) 0%, hsl(var(--cerise-dark)) 100%);
+  color: hsl(var(--primary-foreground));
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 10px rgba(225, 27, 112, 0.3);
+}
+
+/* Modern Input Styles */
+.input-modern {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: var(--radius);
+  transition: all 0.3s ease;
+}
+
+.input-modern:focus {
+  border-color: hsl(var(--cerise));
+  box-shadow: 0 0 0 3px rgba(225, 27, 112, 0.1);
+  outline: none;
+}
+
+/* Premium Section Backgrounds */
+.section-dark {
+  background: hsl(var(--background));
+}
+
+.section-mine-shaft {
+  background: hsl(var(--mine-shaft));
+}
+
+.section-cerise {
+  background: linear-gradient(135deg, hsl(var(--cerise-dark)) 0%, hsl(var(--cerise)) 100%);
+}
+
+/* Modern Shimmer Effect */
+.shimmer-modern {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--cerise) / 0.1) 50%,
+    hsl(var(--card)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-modern 2s infinite;
+}
+
+@keyframes shimmer-modern {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Modern Pulse Animation */
+.pulse-modern {
+  animation: pulse-modern 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-modern {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Premium Typography */
+.heading-modern {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: hsl(var(--foreground));
+}
+
+.subheading-modern {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Modern Icon Containers */
+.icon-modern {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, hsl(var(--cerise)) 0%, hsl(var(--cerise-dark)) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(225, 27, 112, 0.3);
+}
+
+/* Modern Overlay for Images */
+.overlay-modern {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(225, 27, 112, 0.3) 50%,
+    rgba(18, 18, 18, 0.9) 100%
+  );
+}
+
+/* Premium Focus States */
+.focus-modern:focus-visible {
+  outline: 2px solid hsl(var(--cerise));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(225, 27, 112, 0.1);
+}
+
+/* Modern Loading Spinner */
+.spinner-modern {
+  border: 3px solid hsl(var(--card));
+  border-top-color: hsl(var(--cerise));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Premium Tooltip */
+.tooltip-modern {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--cerise) / 0.3);
+  color: hsl(var(--foreground));
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  font-size: 0.875rem;
+}
+
+/* Modern Menu Item Hover */
+.menu-item-modern {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.menu-item-modern:hover {
+  background: hsl(var(--card));
+  border-color: hsl(var(--cerise) / 0.3);
+  transform: translateX(4px);
+}
+
+/* Premium Stats/Numbers */
+.stat-modern {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, hsl(var(--cerise)), hsl(var(--cerise-light)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+/* Modern Hero Overlay */
+.hero-overlay-modern {
+  background: linear-gradient(
+    135deg,
+    rgba(18, 18, 18, 0.95) 0%,
+    rgba(225, 27, 112, 0.8) 50%,
+    rgba(18, 18, 18, 0.95) 100%
+  );
+}
+
+/* Premium Mobile Optimizations */
+@media (max-width: 768px) {
+  .card-modern:hover {
+    transform: translateY(-2px);
+  }
+  
+  .hover-lift-modern:hover {
+    transform: translateY(-4px) scale(1.01);
+  }
+  
+  .stat-modern {
+    font-size: 2rem;
+  }
+}

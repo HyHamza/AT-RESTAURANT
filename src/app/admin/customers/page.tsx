@@ -20,6 +20,9 @@ import {
   Clock,
   Package
 } from 'lucide-react'
+import { ExportButton } from '@/components/ui/export-button'
+import { ExportColumn, formatDateForExport, formatCurrencyForExport, generateFilename } from '@/lib/export-utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 interface Customer {
   id: string
@@ -194,6 +197,18 @@ export default function AdminCustomersPage() {
     })
   )
 
+  // Export columns configuration
+  const exportColumns: ExportColumn[] = [
+    { key: 'full_name', label: 'Full Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'order_count', label: 'Total Orders' },
+    { key: 'total_spent', label: 'Total Spent', format: formatCurrencyForExport },
+    { key: 'avg_order_value', label: 'Avg Order Value', format: formatCurrencyForExport },
+    { key: 'last_order_date', label: 'Last Order', format: formatDateForExport },
+    { key: 'created_at', label: 'Member Since', format: formatDateForExport }
+  ]
+
   // Calculate summary statistics
   const totalCustomers = customers.length
   const totalOrders = customers.reduce((sum, customer) => sum + (customer.order_count || 0), 0)
@@ -203,22 +218,29 @@ export default function AdminCustomersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-          <p className="text-gray-600">View and manage customer information and order history</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Customer Management</h1>
+          <p className="text-gray-600 mt-1">View and manage customer information and order history</p>
         </div>
+        
+        <ExportButton
+          data={filteredCustomers}
+          columns={exportColumns}
+          filename={generateFilename('customers')}
+          className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
+        />
       </div>
 
       {/* Summary Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">

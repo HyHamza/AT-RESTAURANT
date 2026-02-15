@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
-import { Search, UserPlus, Shield, ShieldOff, Mail, Phone, Calendar } from 'lucide-react'
+import { Search, UserPlus, Shield, ShieldOff, Mail, Phone, Calendar, Filter } from 'lucide-react'
+import { ExportButton } from '@/components/ui/export-button'
+import { ExportColumn, formatDateForExport, formatCurrencyForExport, generateFilename } from '@/lib/export-utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 interface User {
   id: string
@@ -19,12 +22,15 @@ interface User {
   total_spent?: number
 }
 
+type UserFilter = 'all' | 'admins' | 'customers'
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
+  const [userFilter, setUserFilter] = useState<UserFilter>('all')
 
   useEffect(() => {
     loadUsers()
@@ -103,36 +109,104 @@ export default function AdminUsersPage() {
     setShowUserDetails(true)
   }
 
-  const filteredUsers = users.filter(user => {
-    const searchLower = searchQuery.toLowerCase()
-    return (
-      user.email.toLowerCase().includes(searchLower) ||
-      user.full_name?.toLowerCase().includes(searchLower) ||
-      user.phone?.includes(searchQuery)
-    )
-  })
+  // Filter users based on selected filter
+  const getFilteredUsers = () => {
+    let filtered = users
+
+    // Apply role filter
+    if (userFilter === 'admins') {
+      filtered = filtered.filter(user => user.is_admin)
+    } else if (userFilter === 'customers') {
+      filtered = filtered.filter(user => !user.is_admin)
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase()
+      filtered = filtered.filter(user => {
+        return (
+          user.email.toLowerCase().includes(searchLower) ||
+          user.full_name?.toLowerCase().includes(searchLower) ||
+          user.phone?.includes(searchQuery)
+        )
+      })
+    }
+
+    return filtered
+  }
+
+  const filteredUsers = getFilteredUsers()
+
+  // Export columns configuration
+  const exportColumns: ExportColumn[] = [
+    { key: 'full_name', label: 'Full Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'is_admin', label: 'Role', format: (val) => val ? 'Admin' : 'Customer' },
+    { key: 'order_count', label: 'Total Orders' },
+    { key: 'total_spent', label: 'Total Spent', format: formatCurrencyForExport },
+    { key: 'created_at', label: 'Member Since', format: formatDateForExport }
+  ]
+
+  const adminCount = users.filter(u => u.is_admin).length
+  const customerCount = users.filter(u => !u.is_admin).length
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600">Manage users and admin privileges</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Management</h1>
+          <p className="text-gray-600 mt-1">Manage users and admin privileges</p>
         </div>
+        
+        <ExportButton
+          data={filteredUsers}
+          columns={exportColumns}
+          filename={generateFilename(`users_${userFilter}`)}
+          className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-gray-900">{users.length}</p>
+              <p className="text-sm text-gray-600 mt-1">Total Users</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-orange-600">{adminCount}</p>
+              <p className="text-sm text-gray-600 mt-1">Administrators</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-blue-600">{customerCount}</p>
+              <p className="text-sm text-gray-600 mt-1">Customers</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -144,6 +218,40 @@ export default function AdminUsersPage() {
                 />
               </div>
             </div>
+            
+            {/* Role Filter Tabs */}
+            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setUserFilter('all')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  userFilter === 'all'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                All Users ({users.length})
+              </button>
+              <button
+                onClick={() => setUserFilter('admins')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  userFilter === 'admins'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Admins ({adminCount})
+              </button>
+              <button
+                onClick={() => setUserFilter('customers')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  userFilter === 'customers'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Customers ({customerCount})
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -151,7 +259,11 @@ export default function AdminUsersPage() {
       {/* Users List */}
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
+          <CardTitle>
+            {userFilter === 'all' && `All Users (${filteredUsers.length})`}
+            {userFilter === 'admins' && `Administrators (${filteredUsers.length})`}
+            {userFilter === 'customers' && `Customers (${filteredUsers.length})`}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredUsers.length === 0 ? (
@@ -159,47 +271,48 @@ export default function AdminUsersPage() {
           ) : (
             <div className="space-y-4">
               {filteredUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-gray-600 font-medium text-lg">
                         {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="font-semibold">{user.full_name || 'No name provided'}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <p className="font-semibold truncate">{user.full_name || 'No name provided'}</p>
                         {user.is_admin && (
-                          <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
+                          <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium whitespace-nowrap">
                             Admin
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 flex items-center">
-                        <Mail className="h-3 w-3 mr-1" />
-                        {user.email}
+                      <p className="text-sm text-gray-600 flex items-center mt-1">
+                        <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="truncate">{user.email}</span>
                       </p>
                       {user.phone && (
                         <p className="text-sm text-gray-600 flex items-center">
-                          <Phone className="h-3 w-3 mr-1" />
+                          <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
                           {user.phone}
                         </p>
                       )}
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right text-sm">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="text-sm">
                       <p className="font-medium">{user.order_count} orders</p>
-                      <p className="text-gray-600">${user.total_spent?.toFixed(2) || '0.00'} spent</p>
-                      <p className="text-gray-500">{formatDate(user.created_at)}</p>
+                      <p className="text-gray-600">PKR {user.total_spent?.toFixed(2) || '0.00'} spent</p>
+                      <p className="text-gray-500 text-xs">{formatDate(user.created_at)}</p>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewUser(user)}
+                        className="flex-1 sm:flex-none"
                       >
                         View Details
                       </Button>
@@ -212,13 +325,13 @@ export default function AdminUsersPage() {
                       >
                         {user.is_admin ? (
                           <>
-                            <ShieldOff className="h-4 w-4 mr-1" />
-                            Remove Admin
+                            <ShieldOff className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Remove Admin</span>
                           </>
                         ) : (
                           <>
-                            <Shield className="h-4 w-4 mr-1" />
-                            Make Admin
+                            <Shield className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Make Admin</span>
                           </>
                         )}
                       </Button>
@@ -241,6 +354,7 @@ export default function AdminUsersPage() {
                 <Button
                   variant="ghost"
                   onClick={() => setShowUserDetails(false)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
                   ×
                 </Button>
@@ -295,12 +409,12 @@ export default function AdminUsersPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Total Spent</label>
-                      <p className="text-gray-900">${selectedUser.total_spent?.toFixed(2) || '0.00'}</p>
+                      <p className="text-gray-900">PKR {selectedUser.total_spent?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Average Order Value</label>
                       <p className="text-gray-900">
-                        ${selectedUser.order_count && selectedUser.total_spent 
+                        PKR {selectedUser.order_count && selectedUser.total_spent 
                           ? (selectedUser.total_spent / selectedUser.order_count).toFixed(2)
                           : '0.00'
                         }
@@ -310,7 +424,7 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t">
                 <Button
                   variant={selectedUser.is_admin ? "destructive" : "default"}
                   onClick={() => {

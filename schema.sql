@@ -36,6 +36,28 @@ CREATE TABLE IF NOT EXISTS public.users (
     default_longitude DECIMAL(11, 8),
     default_address TEXT,
     location_permissions_granted BOOLEAN DEFAULT FALSE,
+    -- PWA discount fields
+    pwa_installed BOOLEAN DEFAULT FALSE,
+    pwa_installed_at TIMESTAMP WITH TIME ZONE,
+    pwa_discount_eligible BOOLEAN DEFAULT FALSE,
+    pwa_discount_activated_at TIMESTAMP WITH TIME ZONE,
+    pwa_install_device_info TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User locations table for storing multiple delivery addresses
+CREATE TABLE IF NOT EXISTS public.user_locations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    city TEXT,
+    postal_code TEXT,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    is_primary BOOLEAN DEFAULT FALSE,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -45,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
+    emoji TEXT, -- Emoji for category display
     image_url TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -138,6 +161,11 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_is_admin ON public.users(is_admin);
 CREATE INDEX IF NOT EXISTS idx_users_location ON public.users(default_latitude, default_longitude);
 
+-- User locations indexes
+CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON public.user_locations(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_locations_primary ON public.user_locations(user_id, is_primary);
+CREATE INDEX IF NOT EXISTS idx_user_locations_last_used ON public.user_locations(user_id, last_used_at DESC);
+
 -- Categories indexes
 CREATE INDEX IF NOT EXISTS idx_categories_active ON public.categories(is_active);
 CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON public.categories(sort_order);
@@ -177,6 +205,12 @@ CREATE TRIGGER update_menu_items_updated_at
 DROP TRIGGER IF EXISTS update_orders_updated_at ON public.orders;
 CREATE TRIGGER update_orders_updated_at 
     BEFORE UPDATE ON public.orders 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_user_locations_updated_at ON public.user_locations;
+CREATE TRIGGER update_user_locations_updated_at 
+    BEFORE UPDATE ON public.user_locations 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -355,6 +389,7 @@ GRANT ALL ON public.menu_items TO anon;
 GRANT ALL ON public.orders TO anon;
 GRANT ALL ON public.order_items TO anon;
 GRANT ALL ON public.order_status_logs TO anon;
+GRANT ALL ON public.user_locations TO anon;
 
 -- Grant full access to authenticated users
 GRANT ALL ON public.users TO authenticated;
@@ -363,6 +398,7 @@ GRANT ALL ON public.menu_items TO authenticated;
 GRANT ALL ON public.orders TO authenticated;
 GRANT ALL ON public.order_items TO authenticated;
 GRANT ALL ON public.order_status_logs TO authenticated;
+GRANT ALL ON public.user_locations TO authenticated;
 
 -- Grant access to views
 GRANT SELECT ON public.active_menu_items TO anon, authenticated;
@@ -376,11 +412,11 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 -- ============================================================================
 
 -- Insert sample categories
-INSERT INTO public.categories (name, description, sort_order) VALUES
-('Appetizers', 'Start your meal with our delicious appetizers', 1),
-('Main Courses', 'Our signature main dishes', 2),
-('Desserts', 'Sweet endings to your meal', 3),
-('Beverages', 'Refreshing drinks', 4)
+INSERT INTO public.categories (name, description, emoji, sort_order) VALUES
+('Appetizers', 'Start your meal with our delicious appetizers', '🥗', 1),
+('Main Courses', 'Our signature main dishes', '🍽️', 2),
+('Desserts', 'Sweet endings to your meal', '🍰', 3),
+('Beverages', 'Refreshing drinks', '🥤', 4)
 ON CONFLICT DO NOTHING;
 
 -- Insert sample menu items
@@ -476,37 +512,297 @@ SELECT
     (SELECT COUNT(*) FROM public.categories) as categories_created,
     (SELECT COUNT(*) FROM public.menu_items) as menu_items_created,
     'All tables, indexes, functions, and sample data have been created.' as info;
-
 -- ============================================================================
--- USAGE EXAMPLES
+-- SUPABASE STORAGE SETUP FOR MENU IMAGES
 -- ============================================================================
+-- Run this in your Supabase SQL Editor to set up image storage
+-- This will create a public bucket for menu item images
 
-/*
--- Example queries you can run after setup:
+-- Step 1: Create the storage bucket for menu images
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'menu-images',
+  'menu-images',
+  true,
+  5242880, -- 5MB limit per file
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
 
--- 1. View all menu items with categories
+-- Step 2: Create storage policies for public access
+
+-- Allow anyone to view/download images (public read)
+CREATE POLICY "Public Access - Anyone can view menu images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'menu-images');
+
+-- Allow authenticated users to upload images
+CREATE POLICY "Authenticated Upload - Users can upload menu images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'menu-images');
+
+-- Allow authenticated users to update images
+CREATE POLICY "Authenticated Update - Users can update menu images"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'menu-images');
+
+-- Allow authenticated users to delete images
+CREATE POLICY "Authenticated Delete - Users can delete menu images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'menu-images');
+
+-- Step 3: Verify the setup
 SELECT 
-    mi.name as item_name,
-    mi.price,
-    c.name as category_name,
-    mi.is_available
-FROM public.menu_items mi
-JOIN public.categories c ON mi.category_id = c.id
-WHERE mi.deleted_at IS NULL
-ORDER BY c.sort_order, mi.sort_order;
+  'Storage bucket created successfully!' as message,
+  id,
+  name,
+  public,
+  file_size_limit / 1024 / 1024 as max_file_size_mb
+FROM storage.buckets
+WHERE id = 'menu-images';
 
--- 2. Find nearby orders (example coordinates for Faisalabad, Pakistan)
-SELECT * FROM get_nearby_orders(31.4504, 73.1350, 10.0, 'pending');
+- ============================================================================
+-- PWA DISCOUNT FEATURE - Database Schema Extension
+-- ============================================================================
+-- Add PWA installation tracking columns to users table
+ALTER TABLE public.users 
+ADD COLUMN IF NOT EXISTS pwa_installed BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS pwa_installed_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS pwa_discount_eligible BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS pwa_discount_activated_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS pwa_install_device_info TEXT;
 
--- 3. Get order count for a menu item
-SELECT get_menu_item_order_count('your-menu-item-id-here');
+-- Create PWA installations tracking table (for analytics and fraud prevention)
+CREATE TABLE IF NOT EXISTS public.pwa_installations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL, -- Browser fingerprint or session ID
+    device_info TEXT,
+    user_agent TEXT,
+    installed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    discount_claimed BOOLEAN DEFAULT FALSE,
+    discount_claimed_at TIMESTAMP WITH TIME ZONE,
+    ip_address INET,
+    -- Prevent duplicate claims
+    UNIQUE(user_id, session_id)
+);
 
--- 4. Soft delete a menu item
-SELECT soft_delete_menu_item('your-menu-item-id-here');
+-- Add discount tracking to orders table
+ALTER TABLE public.orders
+ADD COLUMN IF NOT EXISTS discount_type TEXT,
+ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS discount_percentage DECIMAL(5,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS pwa_discount_applied BOOLEAN DEFAULT FALSE;
 
--- 5. Make a user admin (replace with actual email)
-UPDATE public.users SET is_admin = TRUE WHERE email = 'your-email@example.com';
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_pwa_discount ON public.users(pwa_discount_eligible);
+CREATE INDEX IF NOT EXISTS idx_pwa_installations_user_id ON public.pwa_installations(user_id);
+CREATE INDEX IF NOT EXISTS idx_pwa_installations_session_id ON public.pwa_installations(session_id);
+CREATE INDEX IF NOT EXISTS idx_orders_pwa_discount ON public.orders(pwa_discount_applied);
 
--- 6. View orders with location data
-SELECT * FROM public.orders_with_location WHERE delivery_latitude IS NOT NULL;
-*/
+-- ============================================================================
+-- FUNCTIONS FOR PWA DISCOUNT MANAGEMENT
+-- ============================================================================
+
+-- Function to activate PWA discount for a user
+CREATE OR REPLACE FUNCTION activate_pwa_discount(
+    p_user_id UUID,
+    p_session_id TEXT,
+    p_device_info TEXT DEFAULT NULL,
+    p_user_agent TEXT DEFAULT NULL,
+    p_ip_address INET DEFAULT NULL
+) RETURNS JSON AS $$
+DECLARE
+    existing_install_count INTEGER;
+    result JSON;
+BEGIN
+    -- Check if user already has discount activated
+    IF EXISTS (
+        SELECT 1 FROM public.users 
+        WHERE id = p_user_id AND pwa_discount_eligible = TRUE
+    ) THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'PWA discount already activated for this user',
+            'already_activated', true
+        );
+    END IF;
+    
+    -- Check for duplicate installations from same session
+    SELECT COUNT(*) INTO existing_install_count
+    FROM public.pwa_installations
+    WHERE session_id = p_session_id AND discount_claimed = TRUE;
+    
+    IF existing_install_count > 0 THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'PWA discount already claimed from this device',
+            'duplicate_claim', true
+        );
+    END IF;
+    
+    -- Update user record
+    UPDATE public.users
+    SET 
+        pwa_installed = TRUE,
+        pwa_installed_at = NOW(),
+        pwa_discount_eligible = TRUE,
+        pwa_discount_activated_at = NOW(),
+        pwa_install_device_info = p_device_info
+    WHERE id = p_user_id;
+    
+    -- Record installation
+    INSERT INTO public.pwa_installations (
+        user_id,
+        session_id,
+        device_info,
+        user_agent,
+        ip_address,
+        discount_claimed,
+        discount_claimed_at
+    ) VALUES (
+        p_user_id,
+        p_session_id,
+        p_device_info,
+        p_user_agent,
+        p_ip_address,
+        TRUE,
+        NOW()
+    )
+    ON CONFLICT (user_id, session_id) 
+    DO UPDATE SET
+        discount_claimed = TRUE,
+        discount_claimed_at = NOW();
+    
+    result := json_build_object(
+        'success', true,
+        'message', 'PWA discount activated successfully',
+        'discount_percentage', 10
+    );
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check if user is eligible for PWA discount
+CREATE OR REPLACE FUNCTION check_pwa_discount_eligibility(p_user_id UUID)
+RETURNS JSON AS $$
+DECLARE
+    is_eligible BOOLEAN;
+    installed_at TIMESTAMP WITH TIME ZONE;
+    result JSON;
+BEGIN
+    SELECT 
+        pwa_discount_eligible,
+        pwa_discount_activated_at
+    INTO is_eligible, installed_at
+    FROM public.users
+    WHERE id = p_user_id;
+    
+    IF is_eligible IS NULL THEN
+        RETURN json_build_object(
+            'eligible', false,
+            'message', 'User not found'
+        );
+    END IF;
+    
+    result := json_build_object(
+        'eligible', is_eligible,
+        'activated_at', installed_at,
+        'discount_percentage', CASE WHEN is_eligible THEN 10 ELSE 0 END
+    );
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to calculate discounted price
+CREATE OR REPLACE FUNCTION calculate_pwa_discount(
+    p_original_amount DECIMAL(10,2),
+    p_user_id UUID DEFAULT NULL
+) RETURNS JSON AS $$
+DECLARE
+    is_eligible BOOLEAN := FALSE;
+    discount_percentage DECIMAL(5,2) := 10.0;
+    discount_amount DECIMAL(10,2);
+    final_amount DECIMAL(10,2);
+BEGIN
+    -- Check if user is eligible for discount
+    IF p_user_id IS NOT NULL THEN
+        SELECT pwa_discount_eligible INTO is_eligible
+        FROM public.users
+        WHERE id = p_user_id;
+    END IF;
+    
+    IF is_eligible THEN
+        discount_amount := ROUND(p_original_amount * (discount_percentage / 100), 2);
+        final_amount := p_original_amount - discount_amount;
+    ELSE
+        discount_amount := 0;
+        final_amount := p_original_amount;
+    END IF;
+    
+    RETURN json_build_object(
+        'original_amount', p_original_amount,
+        'discount_percentage', CASE WHEN is_eligible THEN discount_percentage ELSE 0 END,
+        'discount_amount', discount_amount,
+        'final_amount', final_amount,
+        'discount_applied', is_eligible
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- ANALYTICS VIEWS
+-- ============================================================================
+
+-- View for PWA discount analytics
+CREATE OR REPLACE VIEW public.pwa_discount_analytics AS
+SELECT 
+    COUNT(DISTINCT id) as total_pwa_users,
+    COUNT(DISTINCT CASE WHEN pwa_discount_eligible THEN id END) as discount_eligible_users,
+    COUNT(DISTINCT CASE WHEN pwa_installed THEN id END) as total_installations,
+    ROUND(
+        COUNT(DISTINCT CASE WHEN pwa_discount_eligible THEN id END)::DECIMAL / 
+        NULLIF(COUNT(DISTINCT id), 0) * 100, 
+        2
+    ) as discount_activation_rate
+FROM public.users;
+
+-- View for PWA discount usage in orders
+CREATE OR REPLACE VIEW public.pwa_discount_order_stats AS
+SELECT 
+    COUNT(*) as total_orders_with_discount,
+    SUM(discount_amount) as total_discount_given,
+    AVG(discount_amount) as avg_discount_per_order,
+    SUM(total_amount) as total_revenue_with_discount,
+    SUM(original_amount) as total_original_amount
+FROM public.orders
+WHERE pwa_discount_applied = TRUE;
+
+-- ============================================================================
+-- PERMISSIONS
+-- ============================================================================
+
+-- Grant access to new tables and functions
+GRANT ALL ON public.pwa_installations TO anon, authenticated;
+GRANT SELECT ON public.pwa_discount_analytics TO anon, authenticated;
+GRANT SELECT ON public.pwa_discount_order_stats TO anon, authenticated;
+
+-- ============================================================================
+-- COMMENTS
+-- ============================================================================
+
+COMMENT ON TABLE public.pwa_installations IS 'Tracks PWA installations and discount claims for fraud prevention';
+COMMENT ON COLUMN public.users.pwa_installed IS 'Whether user has installed the PWA';
+COMMENT ON COLUMN public.users.pwa_discount_eligible IS 'Whether user is eligible for 10% PWA discount';
+COMMENT ON COLUMN public.orders.pwa_discount_applied IS 'Whether PWA discount was applied to this order';
+
+-- Success message
+SELECT 
+    'PWA Discount feature schema created successfully!' as message,
+    'Users can now receive 10% discount for installing the PWA' as info;

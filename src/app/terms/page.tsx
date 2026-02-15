@@ -6,20 +6,20 @@ import { Button } from '@/components/ui/button'
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-white pt-16">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
             <Link href="/" className="w-full sm:w-auto">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 w-full sm:w-auto h-12 text-base">
+              <Button variant="ghost" size="sm" className="text-muted-text hover:text-pink-primary w-full sm:w-auto h-12 text-base">
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Home
               </Button>
             </Link>
             <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-orange-500" />
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Terms of Service</h1>
+              <FileText className="h-5 w-5 text-pink-primary" />
+              <h1 className="text-xl sm:text-2xl font-bold text-dark">Terms of Service</h1>
             </div>
           </div>
         </div>
@@ -27,17 +27,17 @@ export default function TermsOfService() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8">
+        <div className="card-white p-6 sm:p-8">
           {/* Last Updated */}
-          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-6 sm:mb-8">
+          <div className="flex items-center space-x-2 text-sm text-muted-text mb-6 sm:mb-8">
             <Clock className="h-4 w-4" />
             <span>Last updated: January 31, 2026</span>
           </div>
 
           {/* Introduction */}
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Welcome to AT RESTAURANT</h2>
-            <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
+            <h2 className="text-lg sm:text-xl font-semibold text-dark mb-4">Welcome to AT RESTAURANT</h2>
+            <p className="text-muted-text leading-relaxed text-sm sm:text-base">
               These Terms of Service govern your use of the AT RESTAURANT website and mobile application. 
               By accessing or using our services, you agree to be bound by these terms.
             </p>
@@ -200,16 +200,16 @@ export default function TermsOfService() {
           </div>
 
           {/* Contact Information */}
-          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200">
-            <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
+          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-border">
+            <div className="bg-pink-light rounded-lg p-4 sm:p-6">
               <div className="flex items-start space-x-3">
-                <Mail className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <Mail className="h-5 w-5 text-pink-primary mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Questions about these terms?</h4>
-                  <p className="text-gray-700 text-sm mb-3">
+                  <h4 className="font-semibold text-dark mb-2 text-sm sm:text-base">Questions about these terms?</h4>
+                  <p className="text-muted-text text-sm mb-3">
                     If you have any questions about these Terms of Service, please contact us:
                   </p>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <div className="text-sm text-muted-text space-y-1">
                     <p>Email: info@atrestaurant.pk</p>
                     <p>Phone: +92 41 123 4567</p>
                     <p>Address: Kotwali Road, Faisalabad, Punjab, Pakistan</p>

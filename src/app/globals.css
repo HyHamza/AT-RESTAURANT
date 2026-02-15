@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 :root {
+  /* Foodpanda-Inspired Pink + White Theme */
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 0 0% 21%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 0 0% 21%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 24.6 95% 53.1%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 84% 4.9%;
+  --popover-foreground: 0 0% 21%;
+  
+  /* Primary Pink #e11b70 */
+  --primary: 337 80% 50%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Dark Text #353535 */
+  --secondary: 0 0% 21%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted Accent #51323f */
+  --muted: 0 0% 97%;
+  --muted-foreground: 330 23% 26%;
+  
+  /* Light Pink Accent */
+  --accent: 337 100% 98%;
+  --accent-foreground: 337 80% 50%;
+  
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 24.6 95% 53.1%;
-  --radius: 0.5rem;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Clean Borders */
+  --border: 0 0% 93%;
+  --input: 0 0% 93%;
+  --ring: 337 80% 50%;
+  --radius: 0.75rem;
+  
+  /* Foodpanda Pink Colors */
+  --pink-primary: 337 80% 50%;
+  --pink-hover: 337 80% 45%;
+  --pink-light: 337 100% 98%;
+  --dark-text: 0 0% 21%;
+  --muted-text: 330 23% 26%;
+  --gray-light: 0 0% 97%;
 }
 
 @theme inline {
@@ -44,6 +70,14 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --font-sans: var(--font-inter);
+  
+  /* Foodpanda Pink Colors */
+  --color-pink-primary: hsl(var(--pink-primary));
+  --color-pink-hover: hsl(var(--pink-hover));
+  --color-pink-light: hsl(var(--pink-light));
+  --color-dark-text: hsl(var(--dark-text));
+  --color-muted-text: hsl(var(--muted-text));
+  --color-gray-light: hsl(var(--gray-light));
 }
 
 * {
@@ -56,23 +90,22 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Modern scrollbar */
+/* Clean White Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: #f9f9f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground));
-  border-radius: 4px;
+  background: #e11b70;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
+  background: #c91660;
 }
 
 /* Smooth animations */
@@ -110,54 +143,12 @@ body {
   outline-offset: 2px;
 }
 
-/* Enhanced button hover effects */
-.btn-hover-lift:hover {
-  transform: translateY(-2px);
-}
-
-/* Card hover effects */
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-/* Gradient text */
+/* Pink gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #f97316, #dc2626);
+  background: linear-gradient(135deg, #e11b70, #ff4d94);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-/* Admin notification animations */
-@keyframes slideInFromRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-
-/* Modern backdrop blur support */
-@supports (backdrop-filter: blur(10px)) {
-  .backdrop-blur-modern {
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
 }
 
 /* Enhanced mobile touch targets */
@@ -186,106 +177,417 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Modern glass morphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Enhanced loading states */
-.loading-shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;
+}
+
+/* Video background optimizations */
+video {
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+.video-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Optimize for mobile devices */
+@media (max-width: 768px) {
+  video {
+    filter: blur(2px) !important;
+  }
+}
+
+/* ===================================
+   RESPONSIVE DESIGN ENHANCEMENTS
+   =================================== */
+
+/* Mobile-first breakpoints */
+/* sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px */
+
+/* Safe area insets for mobile devices (notches, etc.) */
+@supports (padding: env(safe-area-inset-left)) {
+  .safe-area-inset {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent text size adjustment on mobile */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Improve tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: rgba(225, 27, 112, 0.1);
+}
+
+/* Responsive container with proper padding */
+.container-responsive {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Touch-friendly spacing */
+.touch-spacing {
+  padding: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .touch-spacing {
+    padding: 1rem;
+  }
+}
+
+/* Responsive text sizes */
+.text-responsive-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-sm {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
+.text-responsive-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-base {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-lg {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+
+/* Responsive grid utilities */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* Stack on mobile, row on desktop */
+.stack-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .stack-mobile {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Hide on mobile */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hide-mobile {
+    display: block;
+  }
+}
+
+/* Show only on mobile */
+.show-mobile {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .show-mobile {
+    display: none;
+  }
+}
+
+/* Responsive modal/dialog */
+.modal-responsive {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .modal-responsive {
+    align-items: center;
+    padding: 1rem;
+  }
+}
+
+.modal-content-responsive {
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 1rem 1rem 0 0;
+}
+
+@media (min-width: 768px) {
+  .modal-content-responsive {
+    max-width: 42rem;
+    border-radius: 1rem;
+  }
+}
+
+/* Responsive table */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+}
+
+@media (min-width: 1024px) {
+  .table-responsive table {
+    min-width: 100%;
+  }
+}
+
+/* Card stack on mobile */
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .card-stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .card-stack > * {
+    flex: 1;
+    min-width: 250px;
+  }
+}
+
+/* Responsive padding utilities */
+.p-responsive {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .p-responsive {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .p-responsive {
+    padding: 2rem;
+  }
+}
+
+/* Responsive margin utilities */
+.m-responsive {
+  margin: 1rem;
+}
+
+@media (min-width: 640px) {
+  .m-responsive {
+    margin: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .m-responsive {
+    margin: 2rem;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+}
+
+/* Improve form inputs on mobile */
+input, 
+textarea, 
+select {
+  font-size: 16px; /* Prevents zoom on iOS */
+}
+
+@media (min-width: 768px) {
+  input, 
+  textarea, 
+  select {
+    font-size: 1rem;
+  }
+}
+
+/* Responsive image container */
+.img-responsive {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Aspect ratio utilities */
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-portrait {
+  aspect-ratio: 3 / 4;
+}
+
+/* Loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 50%,
+    #f0f0f0 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Button overrides for better visibility */
-.btn-hero-primary {
-  background-color: white !important;
-  color: #dc2626 !important;
-  border: none !important;
-}
-
-.btn-hero-primary:hover {
-  background-color: #f3f4f6 !important;
-  color: #dc2626 !important;
-}
-
-.btn-hero-secondary {
-  background-color: transparent !important;
-  color: white !important;
-  border: 2px solid white !important;
-}
-
-.btn-hero-secondary:hover {
-  background-color: white !important;
-  color: #dc2626 !important;
-  border: 2px solid white !important;
-}
-
-/* Ensure header elements are visible */
-.header-transparent .text-white {
-  color: white !important;
-}
-
-.header-transparent .border-white {
-  border-color: white !important;
-}
-
-/* Enhanced image hover effects */
-.image-hover-zoom {
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.image-hover-zoom:hover {
-  transform: scale(1.1);
-}
-
-/* Modal backdrop blur */
-.modal-backdrop {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Smooth zoom animation */
-@keyframes zoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+  
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-.zoom-in {
-  animation: zoomIn 0.3s ease-out;
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
-/* Image overlay effects */
-.image-overlay {
-  background: linear-gradient(
-    45deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 50%,
-    rgba(0, 0, 0, 0) 100%
-  );
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  * {
+    border-width: 2px;
+  }
 }
 
-/* Card hover lift effect */
-.card-lift:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+/* Dark mode support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  /* Add dark mode styles here if needed */
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
 }

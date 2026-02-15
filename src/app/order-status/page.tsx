@@ -23,40 +23,43 @@ import {
 import type { Order, OrderItem } from '@/types'
 import type { OfflineOrder } from '@/lib/offline-db'
 import Link from 'next/link'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 const statusConfig = {
   pending: {
     icon: Clock,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
+    color: 'text-pink-primary',
+    bgColor: 'bg-pink-light',
     label: 'Order Received',
     description: 'Your order has been received and is being processed.'
   },
   preparing: {
     icon: Utensils,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
+    color: 'text-pink-primary',
+    bgColor: 'bg-pink-light',
     label: 'Preparing',
     description: 'Our chefs are preparing your delicious meal.'
   },
   ready: {
     icon: Package,
     color: 'text-green-600',
-    bgColor: 'bg-green-100',
+    bgColor: 'bg-green-50',
     label: 'Ready for Pickup',
     description: 'Your order is ready! Please come pick it up.'
   },
   completed: {
     icon: CheckCircle,
-    color: 'text-green-700',
-    bgColor: 'bg-green-200',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
     label: 'Completed',
     description: 'Order completed. Thank you for dining with us!'
   },
   cancelled: {
     icon: Clock,
     color: 'text-red-600',
-    bgColor: 'bg-red-100',
+    bgColor: 'bg-red-50',
     label: 'Cancelled',
     description: 'This order has been cancelled.'
   }
@@ -258,13 +261,19 @@ function OrderStatusContent() {
   const isOfflineOrder = order && offlineOrders.find(o => o.id === order.id)
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-white pt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button and Breadcrumbs */}
+        <div className="mb-4">
+          <BackButton href="/dashboard" label="Back to Dashboard" />
+        </div>
+        <Breadcrumbs items={[{ label: 'Order Status' }]} className="mb-6" />
+        
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Order Status</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-dark heading-clean">Order Status</h1>
           
           {!isOnline && (
-            <div className="flex items-center text-orange-600">
+            <div className="flex items-center text-pink-primary">
               <WifiOff className="h-4 w-4 mr-2" />
               <span className="text-sm">Offline Mode</span>
             </div>
@@ -273,16 +282,16 @@ function OrderStatusContent() {
 
         {/* Offline Orders Alert */}
         {pendingOrders > 0 && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
+          <Card className="mb-6 card-pink-accent">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3">
-                  <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-pink-primary mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-orange-800">
+                    <h3 className="font-semibold text-dark">
                       {pendingOrders} Order{pendingOrders > 1 ? 's' : ''} Pending Sync
                     </h3>
-                    <p className="text-sm text-orange-700 mt-1">
+                    <p className="text-sm text-muted-text mt-1">
                       {isOnline 
                         ? 'Orders are being synced automatically. You can force sync if needed.'
                         : 'Orders will sync automatically when connection is restored.'
@@ -329,14 +338,14 @@ function OrderStatusContent() {
                 {offlineOrders.map((offlineOrder) => (
                   <div 
                     key={offlineOrder.id} 
-                    className="flex items-center justify-between p-4 border rounded-lg bg-gray-50"
+                    className="flex items-center justify-between p-4 border rounded-lg bg-gray-light hover:shadow-clean transition-smooth"
                   >
                     <div>
                       <h3 className="font-semibold">{offlineOrder.id}</h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-text">
                         {offlineOrder.customer_name} • {formatPrice(offlineOrder.total_amount)}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-text">
                         Created: {formatDate(offlineOrder.created_at)}
                       </p>
                       {offlineOrder.sync_error && (
@@ -346,7 +355,7 @@ function OrderStatusContent() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+                      <span className="text-xs px-2 py-1 badge-pink">
                         Pending Sync
                       </span>
                       <Button
@@ -368,9 +377,9 @@ function OrderStatusContent() {
         )}
 
         {/* Search Section */}
-        <Card className="mb-8">
+        <Card className="mb-8 card-white">
           <CardHeader>
-            <CardTitle>Track Your Order</CardTitle>
+            <CardTitle className="text-dark">Track Your Order</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
@@ -380,11 +389,21 @@ function OrderStatusContent() {
                   value={searchOrderId}
                   onChange={(e) => setSearchOrderId(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="input-clean"
                 />
               </div>
-              <Button onClick={handleSearch} disabled={loading}>
-                <Search className="h-4 w-4 mr-2" />
-                {loading ? 'Searching...' : 'Track Order'}
+              <Button onClick={handleSearch} disabled={loading} className="btn-pink-primary">
+                {loading ? (
+                  <>
+                    <LoadingSpinner size="sm" variant="white" className="mr-2" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Track Order
+                  </>
+                )}
               </Button>
             </div>
             {error && (
@@ -413,31 +432,31 @@ function OrderStatusContent() {
             )}
 
             {/* Order Information */}
-            <Card className="mb-8">
+            <Card className="mb-8 card-white">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-dark">
                   <span>Order #{order.id}</span>
                   {isOfflineOrder && (
-                    <span className="text-sm px-3 py-1 bg-orange-100 text-orange-700 rounded-full">
+                    <span className="text-sm badge-pink">
                       Pending Sync
                     </span>
                   )}
                 </CardTitle>
-                <p className="text-gray-600">
+                <p className="text-muted-text">
                   Placed on {formatDate(order.created_at)}
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-semibold mb-2">Customer Information</h3>
-                    <p className="text-gray-600">{order.customer_name}</p>
-                    <p className="text-gray-600">{order.customer_email}</p>
-                    <p className="text-gray-600">{order.customer_phone}</p>
+                    <h3 className="font-semibold mb-2 text-dark">Customer Information</h3>
+                    <p className="text-muted-text">{order.customer_name}</p>
+                    <p className="text-muted-text">{order.customer_email}</p>
+                    <p className="text-muted-text">{order.customer_phone}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2">Order Total</h3>
-                    <p className="text-2xl font-bold text-orange-500">
+                    <h3 className="font-semibold mb-2 text-dark">Order Total</h3>
+                    <p className="text-2xl font-bold text-pink-primary">
                       {formatPrice(order.total_amount)}
                     </p>
                     {order.notes && (
@@ -510,7 +529,7 @@ function OrderStatusContent() {
                         </div>
                         {step.isActive && !isOfflineOrder && (
                           <div className="animate-pulse">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-pink-primary rounded-full"></div>
                           </div>
                         )}
                       </div>
@@ -572,11 +591,11 @@ function OrderStatusContent() {
           <div className="text-center py-12">
             <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Track Your Order</h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-text mb-6">
               Enter your order ID above to track the status of your order in real-time.
             </p>
             <Link href="/menu">
-              <Button className="bg-orange-500 hover:bg-orange-600">
+              <Button className="btn-pink-primary">
                 Place New Order
               </Button>
             </Link>

@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ImageWithModal } from '@/components/ui/image-modal'
 import { useCart } from '@/contexts/cart-context'
+import { useToastHelpers } from '@/components/ui/toast'
 import { formatPrice, generateOrderId } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { offlineUtils } from '@/lib/offline-db'
 import { OrderSkeleton } from '@/components/skeletons/order-skeleton'
 import { LocationPicker } from '@/components/location-picker'
 import { LocationData } from '@/lib/location-service'
+import { useAuth } from '@/hooks/use-auth'
+import { useLocation } from '@/hooks/use-location'
 import { 
   Plus, 
   Minus, 
@@ -25,10 +28,20 @@ import {
   CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { BackButton } from '@/components/ui/back-button'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 function OrderContent() {
-  const { items, total, updateQuantity, removeItem, clearCart } = useCart()
-  const [user, setUser] = useState<any>(null)
+  const { items, total, discountAmount, finalTotal, updateQuantity, removeItem, clearCart } = useCart()
+  const toast = useToastHelpers()
+  
+  // Use new auth hook with offline support
+  const { user, isAuthenticated, loading: authLoading, signIn, signUp } = useAuth()
+  
+  // Use new location hook
+  const { lastUsedLocation, loadLastUsed, saveLocation } = useLocation()
+  
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     email: '',
@@ -45,6 +58,45 @@ function OrderContent() {
   const [authError, setAuthError] = useState('')
   const router = useRouter()
 
+  // Set auth step based on authentication status
+  useEffect(() => {
+    if (authLoading) {
+      setAuthStep('check')
+    } else if (isAuthenticated && user) {
+      setAuthStep('authenticated')
+      
+      // Pre-fill customer info from user
+      setCustomerInfo(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      }))
+    } else {
+      setAuthStep('login')
+    }
+  }, [isAuthenticated, user, authLoading])
+
+  // Load last used location when user is authenticated
+  useEffect(() => {
+    if (user?.id) {
+      loadLastUsed(user.id)
+    }
+  }, [user, loadLastUsed])
+
+  // Auto-fill location when loaded
+  useEffect(() => {
+    if (lastUsedLocation) {
+      setDeliveryLocation({
+        latitude: lastUsedLocation.latitude,
+        longitude: lastUsedLocation.longitude,
+        address: lastUsedLocation.addressLine1,
+        method: 'manual',
+        timestamp: new Date().toISOString()
+      })
+    }
+  }, [lastUsedLocation])
+
   useEffect(() => {
     // Set initial online status
     setIsOnline(navigator.onLine)
@@ -56,40 +108,11 @@ function OrderContent() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     
-    checkAuth()
-    
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [])
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session?.user) {
-        setUser(session.user)
-        setAuthStep('authenticated')
-        
-        // Pre-fill customer info from user profile
-        setCustomerInfo(prev => ({
-          ...prev,
-          name: session.user.user_metadata?.full_name || '',
-          email: session.user.email || '',
-          phone: session.user.user_metadata?.phone || ''
-        }))
-
-        // Load user's default location if available
-        loadUserDefaultLocation(session.user.id)
-      } else {
-        setAuthStep('login')
-      }
-    } catch (error) {
-      console.error('[AT RESTAURANT - Order] Auth check error:', error)
-      setAuthStep('login')
-    }
-  }
 
   const loadUserDefaultLocation = async (userId: string) => {
     try {
@@ -176,34 +199,29 @@ function OrderContent() {
     setAuthError('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: customerInfo.email,
-        password: customerInfo.password
-      })
+      const { success, error } = await signIn(customerInfo.email, customerInfo.password)
 
       if (error) {
         // If user doesn't exist, suggest signup
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.includes('Invalid login credentials')) {
           setAuthError('Account not found. Would you like to create a new account?')
-          return
+        } else {
+          setAuthError(error)
         }
-        
-        throw error
+        return
       }
 
-      if (data.user) {
-        setUser(data.user)
+      if (success) {
         setAuthStep('authenticated')
         
-        // Update customer info with user data
+        // Clear password fields
         setCustomerInfo(prev => ({
           ...prev,
-          name: data.user.user_metadata?.full_name || prev.name,
-          email: data.user.email || prev.email,
-          phone: data.user.user_metadata?.phone || prev.phone,
           password: '',
           confirmPassword: ''
         }))
+        
+        toast.success('Welcome back!', 'You are now logged in')
       }
     } catch (error: any) {
       console.error('Login failed:', error)
@@ -223,50 +241,34 @@ function OrderContent() {
     setAuthError('')
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: customerInfo.email,
-        password: customerInfo.password,
-        options: {
-          data: {
-            full_name: customerInfo.name,
-            phone: customerInfo.phone
-          }
+      const { success, error } = await signUp(
+        customerInfo.email,
+        customerInfo.password,
+        {
+          full_name: customerInfo.name,
+          phone: customerInfo.phone
         }
-      })
+      )
 
       if (error) {
-        throw error
+        setAuthError(error)
+        return
       }
 
-      if (data.user) {
-        // Create user record in our users table
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: customerInfo.name,
-            phone: customerInfo.phone
-          })
-
-        if (userError) {
-          // User record creation warning, but continue
-        }
-
-        // If user is immediately confirmed (no email verification required)
-        if (data.session) {
-          setUser(data.user)
-          setAuthStep('authenticated')
-          setCustomerInfo(prev => ({
-            ...prev,
-            password: '',
-            confirmPassword: ''
-          }))
-        } else {
-          // Email confirmation required
-          setAuthError('Please check your email and click the confirmation link, then try logging in.')
-          setAuthStep('login')
-        }
+      if (success) {
+        setAuthStep('authenticated')
+        
+        // Clear password fields
+        setCustomerInfo(prev => ({
+          ...prev,
+          password: '',
+          confirmPassword: ''
+        }))
+        
+        toast.success('Account created!', 'Welcome to AT Restaurant')
+      } else {
+        setAuthError('Please check your email to confirm your account, then try logging in.')
+        setAuthStep('login')
       }
     } catch (error: any) {
       console.error('Account creation failed:', error)
@@ -275,19 +277,18 @@ function OrderContent() {
       setIsCreatingAccount(false)
     }
   }
-
   const handleSubmitOrder = async () => {
     if (!validateOrderForm()) {
       if (!deliveryLocation) {
-        alert('Please set your delivery location before placing the order.')
+        toast.error('Location Required', 'Please set your delivery location before placing the order.')
       } else {
-        alert('Please ensure you are logged in and all required fields are filled.')
+        toast.error('Form Incomplete', 'Please ensure you are logged in and all required fields are filled.')
       }
       return
     }
 
     if (!user) {
-      alert('You must be logged in to place an order.')
+      toast.error('Login Required', 'You must be logged in to place an order.')
       setAuthStep('login')
       return
     }
@@ -295,6 +296,20 @@ function OrderContent() {
     setIsSubmitting(true)
 
     try {
+      // Save location for future use
+      if (user && deliveryLocation) {
+        try {
+          await saveLocation(user.id, {
+            addressLine1: deliveryLocation.address || 'Current location',
+            latitude: deliveryLocation.latitude,
+            longitude: deliveryLocation.longitude,
+            isPrimary: false
+          })
+        } catch (error) {
+          console.warn('Failed to save location:', error)
+        }
+      }
+
       const orderId = generateOrderId()
       
       const orderData = {
@@ -303,7 +318,12 @@ function OrderContent() {
         customer_name: customerInfo.name,
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone,
-        total_amount: total,
+        total_amount: finalTotal,
+        original_amount: total,
+        discount_amount: discountAmount,
+        discount_percentage: discountAmount > 0 ? 10 : 0,
+        discount_type: discountAmount > 0 ? 'pwa_discount' : null,
+        pwa_discount_applied: discountAmount > 0,
         status: 'pending' as const,
         notes: customerInfo.notes || null,
         // Location data
@@ -343,7 +363,12 @@ function OrderContent() {
               customer_name: customerInfo.name,
               customer_email: customerInfo.email,
               customer_phone: customerInfo.phone,
-              total_amount: total,
+              total_amount: finalTotal,
+              original_amount: total,
+              discount_amount: discountAmount,
+              discount_percentage: discountAmount > 0 ? 10 : 0,
+              discount_type: discountAmount > 0 ? 'pwa_discount' : null,
+              pwa_discount_applied: discountAmount > 0,
               status: 'pending',
               notes: customerInfo.notes || null,
               // Location data
@@ -394,23 +419,23 @@ function OrderContent() {
           // Mark as synced in offline storage
           await offlineUtils.markOrderSynced(orderId)
 
-          alert('Order placed successfully!')
+          toast.success('Order Placed Successfully!', 'Your order has been confirmed and is being prepared.')
           router.push(`/order-status?id=${orderId}`)
           
         } catch (supabaseError: any) {
           console.error('Immediate sync failed:', supabaseError)
           
           // Order is already stored offline, so just notify user
-          alert('Order saved! It will be submitted when connection is restored.')
+          toast.info('Order Saved Offline', 'Your order will be submitted when connection is restored.')
           router.push('/order-status')
         }
       } else {
-        alert('Order saved! It will be submitted automatically when internet connection is restored.')
+        toast.info('Order Saved Offline', 'Your order will be submitted automatically when internet connection is restored.')
         router.push('/order-status')
       }
     } catch (error: any) {
       console.error('Order submission failed:', error)
-      alert(`Failed to save order: ${error.message || 'Unknown error'}. Please try again.`)
+      toast.error('Order Failed', error.message || 'Failed to save order. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -418,15 +443,15 @@ function OrderContent() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 pt-16">
+      <div className="min-h-screen bg-white flex items-center justify-center px-4 pt-16">
         <div className="text-center max-w-lg mx-auto">
-          <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
-            <ShoppingCart className="h-12 w-12 text-orange-500" />
+          <div className="icon-pink-light w-24 h-24 mx-auto mb-8">
+            <ShoppingCart className="h-12 w-12 text-pink-primary" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
-          <p className="text-gray-600 mb-8 text-lg leading-relaxed">Add some delicious items from our menu to get started with your order.</p>
+          <h2 className="text-3xl font-bold text-dark mb-4">Your cart is empty</h2>
+          <p className="text-muted-text mb-8 text-lg leading-relaxed">Add some delicious items from our menu to get started with your order.</p>
           <Link href="/menu">
-            <Button className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+            <Button className="btn-pink-primary px-8 py-4 text-lg font-semibold shadow-pink hover:shadow-pink-lg">
               Browse Menu
             </Button>
           </Link>
@@ -436,13 +461,19 @@ function OrderContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-16">
+    <div className="min-h-screen bg-gray-light pt-16">
       {/* Professional header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-white shadow-clean border-b border-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {/* Back Button and Breadcrumbs */}
+          <div className="mb-4">
+            <BackButton href="/menu" label="Back to Menu" />
+          </div>
+          <Breadcrumbs items={[{ label: 'Menu', href: '/menu' }, { label: 'Checkout' }]} className="mb-4" />
+          
           <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Complete Your Order</h1>
-            <p className="text-gray-600 text-lg">Review your items and provide delivery details</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-dark mb-2">Complete Your Order</h1>
+            <p className="text-muted-text text-base sm:text-lg">Review your items and provide delivery details</p>
           </div>
         </div>
       </div>
@@ -452,90 +483,117 @@ function OrderContent() {
         {/* Left Column - Order Summary */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order Summary - Professional Design */}
-          <Card className="shadow-lg border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-gray-100">
+          <Card className="card-white">
+            <CardHeader className="bg-pink-light border-b border-border">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div>
-                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
-                    <ShoppingCart className="h-5 w-5 mr-2 text-orange-500" />
+                  <CardTitle className="text-xl font-bold text-dark flex items-center">
+                    <ShoppingCart className="h-5 w-5 mr-2 text-pink-primary" />
                     Order Summary
                   </CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">{items.length} item{items.length !== 1 ? 's' : ''} in your cart</p>
+                  <p className="text-sm text-muted-text mt-1">{items.length} item{items.length !== 1 ? 's' : ''} in your cart</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-orange-600">{formatPrice(total)}</p>
-                  <p className="text-sm text-gray-500">Total Amount</p>
+                  <p className="text-2xl font-bold text-pink-primary">{formatPrice(finalTotal)}</p>
+                  {discountAmount > 0 && (
+                    <p className="text-sm text-muted-text line-through">{formatPrice(total)}</p>
+                  )}
+                  <p className="text-sm text-muted-text">Total Amount</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:shadow-md transition-all">
-                    <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
-                      {item.image_url ? (
-                        <ImageWithModal
-                          src={item.image_url}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-orange-200 to-red-200 flex items-center justify-center">
-                          <span className="text-gray-600 text-xs font-medium">No Image</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate text-base">{item.name}</h3>
-                      <p className="text-gray-600 text-sm">{formatPrice(item.price)} each</p>
-                    </div>
-
-                    <div className="flex items-center space-x-3 bg-white rounded-lg border border-gray-200 p-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="h-8 w-8 rounded-md hover:bg-gray-100"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center font-semibold text-sm">{item.quantity}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="h-8 w-8 rounded-md hover:bg-gray-100"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-border hover:shadow-clean transition-all">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <div className="w-16 h-16 sm:w-16 sm:h-16 bg-gray-light rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                        {item.image_url ? (
+                          <ImageWithModal
+                            src={item.image_url}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-pink-light flex items-center justify-center">
+                            <span className="text-muted-text text-xs font-medium">No Image</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-dark text-sm sm:text-base line-clamp-2">{item.name}</h3>
+                        <p className="text-muted-text text-xs sm:text-sm">{formatPrice(item.price)} each</p>
+                      </div>
                     </div>
 
-                    <div className="text-right flex-shrink-0 min-w-0">
-                      <p className="font-bold text-gray-900 text-base">{formatPrice(item.price * item.quantity)}</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 h-auto mt-1 rounded-md"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                      <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-lg border border-border p-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md hover:bg-pink-light"
+                        >
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm">{item.quantity}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-md hover:bg-pink-light"
+                        >
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-dark text-sm sm:text-base">{formatPrice(item.price * item.quantity)}</p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeItem(item.id)}
+                          className="text-pink-primary hover:text-pink-primary hover:bg-pink-light p-1 h-auto mt-1 rounded-md"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-gray-200 pt-6 mt-6">
-                <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-100">
+              <div className="border-t border-border pt-6 mt-6">
+                <div className="bg-pink-light rounded-xl p-4 border border-pink-primary/10 space-y-3">
+                  {/* Subtotal */}
                   <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-lg font-semibold text-gray-900">Total Amount</span>
-                      <p className="text-sm text-gray-600">Including all items</p>
+                    <span className="text-base text-muted-text">Subtotal</span>
+                    <span className="text-lg font-semibold text-dark">{formatPrice(total)}</span>
+                  </div>
+                  
+                  {/* PWA Discount */}
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-green-600">
+                      <span className="text-base font-medium flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        PWA Discount (10%)
+                      </span>
+                      <span className="text-lg font-semibold">-{formatPrice(discountAmount)}</span>
                     </div>
-                    <span className="text-3xl font-bold text-orange-600">{formatPrice(total)}</span>
+                  )}
+                  
+                  {/* Divider */}
+                  <div className="border-t border-pink-primary/20 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-dark">Total Amount</span>
+                      <span className="text-3xl font-bold text-pink-primary">{formatPrice(finalTotal)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <p className="text-sm text-green-600 text-right mt-1">You saved {formatPrice(discountAmount)}!</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -546,9 +604,9 @@ function OrderContent() {
         {/* Right Column - Customer Information */}
         <div className="lg:col-span-1 space-y-6">
           {/* Customer Information - Professional Design */}
-          <Card className="shadow-lg border-0 bg-white sticky top-24">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
-              <CardTitle className="flex items-center text-lg font-bold text-gray-900">
+          <Card className="card-white lg:sticky lg:top-24">
+            <CardHeader className="bg-pink-light border-b border-border p-4 sm:p-6">
+              <CardTitle className="flex items-center text-base sm:text-lg font-bold text-dark">
                 {authStep === 'authenticated' ? (
                   <>
                     <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
@@ -556,7 +614,7 @@ function OrderContent() {
                   </>
                 ) : (
                   <>
-                    <Lock className="h-5 w-5 mr-2 text-orange-500" />
+                    <Lock className="h-5 w-5 mr-2 text-pink-primary" />
                     <span>Account Required</span>
                   </>
                 )}
@@ -571,19 +629,19 @@ function OrderContent() {
             <CardContent className="p-6">
               {authStep === 'check' && (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                  <span className="ml-3 text-gray-600">Checking authentication...</span>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-primary"></div>
+                  <span className="ml-3 text-muted-text">Checking authentication...</span>
                 </div>
               )}
 
               {authStep === 'login' && (
                 <div className="space-y-6">
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <div className="bg-pink-light border border-pink-primary/20 rounded-xl p-4">
                     <div className="flex items-start space-x-3">
-                      <Lock className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <Lock className="h-5 w-5 text-pink-primary mt-0.5 flex-shrink-0" />
                       <div>
-                        <h4 className="font-semibold text-orange-900">Account Required</h4>
-                        <p className="text-sm text-orange-700 mt-1">
+                        <h4 className="font-semibold text-dark">Account Required</h4>
+                        <p className="text-sm text-muted-text mt-1">
                           Sign in to your account or create a new one to place your order.
                         </p>
                       </div>
@@ -592,7 +650,7 @@ function OrderContent() {
 
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -600,13 +658,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Password *
                       </label>
                       <Input
@@ -614,7 +672,7 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Enter your password"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -629,24 +687,24 @@ function OrderContent() {
                       <Button
                         onClick={handleLogin}
                         disabled={isCreatingAccount}
-                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                        className="btn-pink-primary w-full h-12 text-base font-semibold shadow-pink hover:shadow-pink-lg"
                       >
                         {isCreatingAccount ? 'Signing In...' : 'Sign In'}
                       </Button>
 
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300" />
+                          <div className="w-full border-t border-border" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                          <span className="px-4 bg-white text-gray-500 font-medium">Don't have an account?</span>
+                          <span className="px-4 bg-white text-muted-text font-medium">Don't have an account?</span>
                         </div>
                       </div>
 
                       <Button
                         onClick={() => setAuthStep('signup')}
                         variant="outline"
-                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-gray-300 hover:border-orange-500 hover:text-orange-600"
+                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-border hover:border-pink-primary hover:text-pink-primary"
                       >
                         Create New Account
                       </Button>
@@ -657,12 +715,12 @@ function OrderContent() {
 
               {authStep === 'signup' && (
                 <div className="space-y-6">
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="bg-pink-light border border-pink-primary/20 rounded-xl p-4">
                     <div className="flex items-start space-x-3">
-                      <User className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <User className="h-5 w-5 text-pink-primary mt-0.5 flex-shrink-0" />
                       <div>
-                        <h4 className="font-semibold text-blue-900">Create Your Account</h4>
-                        <p className="text-sm text-blue-700 mt-1">
+                        <h4 className="font-semibold text-dark">Create Your Account</h4>
+                        <p className="text-sm text-muted-text mt-1">
                           Create an account to place your order and track it easily.
                         </p>
                       </div>
@@ -671,20 +729,20 @@ function OrderContent() {
 
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -692,13 +750,13 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -706,13 +764,13 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Password * (minimum 6 characters)
                       </label>
                       <Input
@@ -720,13 +778,13 @@ function OrderContent() {
                         value={customerInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                         placeholder="Create a password"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Confirm Password *
                       </label>
                       <Input
@@ -734,7 +792,7 @@ function OrderContent() {
                         value={customerInfo.confirmPassword}
                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                         placeholder="Confirm your password"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -749,24 +807,24 @@ function OrderContent() {
                       <Button
                         onClick={handleSignup}
                         disabled={isCreatingAccount}
-                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-12 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                        className="btn-pink-primary w-full h-12 text-base font-semibold shadow-pink hover:shadow-pink-lg"
                       >
                         {isCreatingAccount ? 'Creating Account...' : 'Create Account & Continue'}
                       </Button>
 
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300" />
+                          <div className="w-full border-t border-border" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                          <span className="px-4 bg-white text-gray-500 font-medium">Already have an account?</span>
+                          <span className="px-4 bg-white text-muted-text font-medium">Already have an account?</span>
                         </div>
                       </div>
 
                       <Button
                         onClick={() => setAuthStep('login')}
                         variant="outline"
-                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-gray-300 hover:border-orange-500 hover:text-orange-600"
+                        className="w-full h-12 text-base font-semibold rounded-xl border-2 border-border hover:border-pink-primary hover:text-pink-primary"
                       >
                         Sign In Instead
                       </Button>
@@ -779,20 +837,20 @@ function OrderContent() {
                 <div className="space-y-6">
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Full Name *
                       </label>
                       <Input
                         value={customerInfo.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Email Address *
                       </label>
                       <Input
@@ -800,14 +858,14 @@ function OrderContent() {
                         value={customerInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 bg-gray-50 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base bg-gray-light"
                         required
                         disabled
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Phone Number *
                       </label>
                       <Input
@@ -815,18 +873,18 @@ function OrderContent() {
                         value={customerInfo.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="Enter your phone number"
-                        className="h-12 text-base rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:ring-0"
+                        className="input-clean h-11 sm:h-12 text-sm sm:text-base"
                         required
                       />
                     </div>
 
                     {/* Location Picker */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                        <MapPin className="h-4 w-4 mr-2" />
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3 flex items-center">
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Delivery Location *
                       </label>
-                      <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
+                      <div className="border-2 border-border rounded-xl p-3 sm:p-4 bg-gray-light">
                         <LocationPicker
                           onLocationSelect={handleLocationSelect}
                           initialLocation={deliveryLocation}
@@ -837,42 +895,42 @@ function OrderContent() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-semibold text-dark mb-2 sm:mb-3">
                         Special Instructions (Optional)
                       </label>
                       <textarea
                         value={customerInfo.notes}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
                         placeholder="Any special requests or dietary restrictions?"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-0 focus:border-orange-500 text-base resize-none bg-white"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-border rounded-xl focus:outline-none focus:ring-0 focus:border-pink-primary text-sm sm:text-base resize-none bg-white"
                         rows={4}
                       />
                     </div>
                   </div>
 
                   {/* Submit Button - Professional Design */}
-                  <div className="pt-6 border-t border-gray-200">
+                  <div className="pt-6 border-t border-border">
                     <Button
                       onClick={handleSubmitOrder}
                       disabled={!validateOrderForm() || isSubmitting}
-                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white h-16 text-lg font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
+                      className="btn-pink-primary w-full h-16 text-lg font-bold shadow-pink hover:shadow-pink-lg disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                          <LoadingSpinner size="sm" variant="white" className="mr-3" />
                           Placing Order...
                         </div>
                       ) : (
                         <div className="flex items-center justify-center">
                           <CreditCard className="h-6 w-6 mr-3" />
-                          Place Order - {formatPrice(total)}
+                          Place Order - {formatPrice(finalTotal)}
                         </div>
                       )}
                     </Button>
                     
                     {!isOnline && (
-                      <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <p className="text-sm text-orange-700 text-center font-medium">
+                      <div className="mt-4 p-3 bg-pink-light border border-pink-primary/20 rounded-lg">
+                        <p className="text-sm text-pink-primary text-center font-medium">
                           Your order will be submitted when internet connection is restored.
                         </p>
                       </div>
