@@ -173,14 +173,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // CRITICAL: Ignore ALL /admin routes - let admin SW handle them
+  // CRITICAL: This SW should NEVER see /admin/ routes due to scope
+  // If we do, it means scope configuration is wrong
   if (url.pathname.startsWith('/admin')) {
-    console.log('[User SW v10] Ignoring admin route:', url.pathname);
-    return;
+    console.error('[User SW v10] ERROR: Received /admin route:', url.pathname);
+    console.error('[User SW v10] Admin routes should be handled by admin SW with scope /admin/');
+    return; // Don't handle it
   }
 
-  // CRITICAL: Ignore admin manifest
-  if (url.pathname === '/admin-manifest.json' || url.pathname.includes('admin-sw.js')) {
+  // CRITICAL: Ignore admin resources
+  if (url.pathname === '/admin-manifest.json' || 
+      url.pathname === '/admin/manifest.json' ||
+      url.pathname.includes('admin-sw.js') ||
+      url.pathname.includes('/admin/sw.js')) {
     console.log('[User SW v10] Ignoring admin resources');
     return;
   }

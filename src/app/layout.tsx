@@ -21,7 +21,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AT RESTAURANT - Fresh Food, Fast Delivery",
   description: "Order delicious food online from AT RESTAURANT. Fresh ingredients, fast delivery, and exceptional taste.",
-  manifest: "/manifest.json",
+  // NOTE: Manifest is NOT set here to avoid conflicts with admin routes
+  // User manifest is injected via <link> in <head> below
 };
 
 export const viewport: Viewport = {
@@ -39,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* User PWA Manifest - Will be overridden by AdminHead for /admin routes */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#e11b70" />
         <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico" />

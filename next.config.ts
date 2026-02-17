@@ -22,9 +22,9 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Admin Service Worker
+      // Admin Service Worker (NEW LOCATION)
       {
-        source: '/admin-sw.js',
+        source: '/admin/sw.js',
         headers: [
           {
             key: 'Cache-Control',
@@ -54,9 +54,9 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Admin Manifest
+      // Admin Manifest (NEW LOCATION)
       {
-        source: '/admin-manifest.json',
+        source: '/admin/manifest.json',
         headers: [
           {
             key: 'Cache-Control',

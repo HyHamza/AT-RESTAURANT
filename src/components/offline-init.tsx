@@ -16,8 +16,15 @@ declare global {
 
 // Optimized service worker registration - runs only once per session
 // CRITICAL: This must NEVER block page load or navigation
+// CRITICAL: This must NEVER run on /admin routes
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return null
+  }
+
+  // CRITICAL: Do NOT register user SW on admin routes
+  if (window.location.pathname.startsWith('/admin')) {
+    console.log('[SW] Skipping user SW registration on admin route')
     return null
   }
 
@@ -32,20 +39,28 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
   try {
     // Check if already controlled by a service worker
     if (navigator.serviceWorker.controller) {
-      console.log('[SW] Already controlled by active SW')
-      window.__SW_REGISTERED__ = true
-      window.__SW_REGISTERING__ = false
-      return navigator.serviceWorker.ready
+      const controllerUrl = navigator.serviceWorker.controller.scriptURL
+      console.log('[SW] Already controlled by:', controllerUrl)
+      
+      // If controlled by user SW, mark as registered
+      if (controllerUrl.includes('/sw.js') && !controllerUrl.includes('/admin/')) {
+        window.__SW_REGISTERED__ = true
+        window.__SW_REGISTERING__ = false
+        return navigator.serviceWorker.ready
+      }
     }
 
-    // Register with aggressive cache bypass
-    console.log('[SW] Registering new service worker v10 (complete offline-first)...')
+    // Register user SW with scope "/" (but NOT including /admin due to admin SW)
+    console.log('[SW] Registering user service worker v10 with scope /...')
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none' // CRITICAL: Never cache sw.js
     })
 
-    console.log('[SW] Registration successful - v10 complete offline-first')
+    console.log('[SW] User SW registration successful')
+    console.log('[SW] Scope:', registration.scope)
+    console.log('[SW] Script URL:', registration.active?.scriptURL || 'installing...')
+    
     window.__SW_REGISTERED__ = true
     window.__SW_REGISTERING__ = false
 

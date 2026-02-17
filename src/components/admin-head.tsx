@@ -4,83 +4,91 @@ import { useEffect } from 'react'
 
 export function AdminHead() {
   useEffect(() => {
-    // Update manifest link
-    const manifestLink = document.querySelector('link[rel="manifest"]')
+    console.log('[AdminHead] Configuring admin PWA metadata...');
+
+    // Update manifest link to admin manifest
+    let manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
     if (manifestLink) {
-      manifestLink.setAttribute('href', '/admin-manifest.json')
+      manifestLink.setAttribute('href', '/admin/manifest.json');
+      console.log('[AdminHead] Updated existing manifest link to /admin/manifest.json');
     } else {
-      const link = document.createElement('link')
-      link.rel = 'manifest'
-      link.href = '/admin-manifest.json'
-      document.head.appendChild(link)
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = '/admin/manifest.json';
+      document.head.appendChild(manifestLink);
+      console.log('[AdminHead] Created new manifest link for /admin/manifest.json');
     }
 
-    // Update theme color
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+    // Update theme color to admin theme
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
     if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', '#1F2937')
+      themeColorMeta.setAttribute('content', '#1F2937');
     } else {
-      const meta = document.createElement('meta')
-      meta.name = 'theme-color'
-      meta.content = '#1F2937'
-      document.head.appendChild(meta)
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      themeColorMeta.content = '#1F2937';
+      document.head.appendChild(themeColorMeta);
     }
 
     // Update apple touch icons to admin icons
-    const appleTouchIcons = document.querySelectorAll('link[rel="apple-touch-icon"]')
+    const appleTouchIcons = document.querySelectorAll('link[rel="apple-touch-icon"]');
     appleTouchIcons.forEach(icon => {
-      const href = icon.getAttribute('href')
+      const href = icon.getAttribute('href');
       if (href && !href.includes('admin-icons')) {
-        const newHref = href.replace('/assets/icons/', '/assets/admin-icons/admin-')
-        icon.setAttribute('href', newHref)
+        const newHref = href.replace('/assets/icons/', '/assets/admin-icons/admin-');
+        icon.setAttribute('href', newHref);
       }
-    })
+    });
 
-    // Update app title
-    const appNameMeta = document.querySelector('meta[name="application-name"]')
+    // Update app title metadata
+    let appNameMeta = document.querySelector('meta[name="application-name"]') as HTMLMetaElement;
     if (appNameMeta) {
-      appNameMeta.setAttribute('content', 'Admin Panel')
+      appNameMeta.setAttribute('content', 'Admin Panel');
     } else {
-      const meta = document.createElement('meta')
-      meta.name = 'application-name'
-      meta.content = 'Admin Panel'
-      document.head.appendChild(meta)
+      appNameMeta = document.createElement('meta');
+      appNameMeta.name = 'application-name';
+      appNameMeta.content = 'Admin Panel';
+      document.head.appendChild(appNameMeta);
     }
 
-    const appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]')
+    let appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
     if (appleTitleMeta) {
-      appleTitleMeta.setAttribute('content', 'Admin')
+      appleTitleMeta.setAttribute('content', 'Admin');
     } else {
-      const meta = document.createElement('meta')
-      meta.name = 'apple-mobile-web-app-title'
-      meta.content = 'Admin'
-      document.head.appendChild(meta)
+      appleTitleMeta = document.createElement('meta');
+      appleTitleMeta.name = 'apple-mobile-web-app-title';
+      appleTitleMeta.content = 'Admin';
+      document.head.appendChild(appleTitleMeta);
     }
 
     // Update status bar style for admin
-    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    let statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') as HTMLMetaElement;
     if (statusBarMeta) {
-      statusBarMeta.setAttribute('content', 'black-translucent')
+      statusBarMeta.setAttribute('content', 'black-translucent');
     } else {
-      const meta = document.createElement('meta')
-      meta.name = 'apple-mobile-web-app-status-bar-style'
-      meta.content = 'black-translucent'
-      document.head.appendChild(meta)
+      statusBarMeta = document.createElement('meta');
+      statusBarMeta.name = 'apple-mobile-web-app-status-bar-style';
+      statusBarMeta.content = 'black-translucent';
+      document.head.appendChild(statusBarMeta);
     }
+
+    console.log('[AdminHead] Admin PWA metadata configured successfully');
 
     // Cleanup function to restore user app settings when leaving admin
     return () => {
-      const manifestLink = document.querySelector('link[rel="manifest"]')
+      console.log('[AdminHead] Restoring user PWA metadata...');
+      
+      const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
       if (manifestLink) {
-        manifestLink.setAttribute('href', '/manifest.json')
+        manifestLink.setAttribute('href', '/manifest.json');
       }
 
-      const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+      const themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
       if (themeColorMeta) {
-        themeColorMeta.setAttribute('content', '#e11b70')
+        themeColorMeta.setAttribute('content', '#e11b70');
       }
-    }
-  }, [])
+    };
+  }, []);
 
-  return null
+  return null;
 }

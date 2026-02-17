@@ -1,0 +1,107 @@
+{
+  "id": "com.atrestaurant.admin",
+  "name": "AT Restaurant Admin",
+  "short_name": "Admin",
+  "description": "Manage orders, menu, customers, and restaurant operations",
+  "start_url": "/admin/?source=pwa&app=admin",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#1F2937",
+  "theme_color": "#1F2937",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/assets/admin-icons/admin-icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/admin-icons/admin-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View admin dashboard",
+      "url": "/admin/",
+      "icons": [
+        {
+          "src": "/assets/admin-icons/admin-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "description": "Manage orders",
+      "url": "/admin/orders",
+      "icons": [
+        {
+          "src": "/assets/admin-icons/admin-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Menu",
+      "short_name": "Menu",
+      "description": "Manage menu items",
+      "url": "/admin/menu",
+      "icons": [
+        {
+          "src": "/assets/admin-icons/admin-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
