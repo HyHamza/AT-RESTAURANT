@@ -50,8 +50,8 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
       }
     }
 
-    // Register user SW with scope "/" (but NOT including /admin due to admin SW)
-    console.log('[SW] Registering user service worker v10 with scope /...')
+    // Register user SW with scope "/"
+    console.log('[SW] Registering user service worker v10...')
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none' // CRITICAL: Never cache sw.js
@@ -59,7 +59,6 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
 
     console.log('[SW] User SW registration successful')
     console.log('[SW] Scope:', registration.scope)
-    console.log('[SW] Script URL:', registration.active?.scriptURL || 'installing...')
     
     window.__SW_REGISTERED__ = true
     window.__SW_REGISTERING__ = false
@@ -72,20 +71,9 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
       console.log('[SW] Update found, installing new version...')
       
       newWorker.addEventListener('statechange', () => {
-        console.log('[SW] New worker state:', newWorker.state)
-        
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('[SW] New version installed, activating...')
-          // Auto-activate new worker immediately
-          newWorker.postMessage({ type: 'SKIP_WAITING' })
-        }
-        
-        if (newWorker.state === 'activated') {
-          console.log('[SW] New version activated - reloading in 1 second...')
-          // Reload after a short delay to ensure SW is fully active
-          setTimeout(() => {
-            window.location.reload()
-          }, 1000)
+          console.log('[SW] New version installed, will activate on next page load')
+          // Don't auto-reload, let user navigate naturally
         }
       })
     })
@@ -147,7 +135,7 @@ export function OfflineInit() {
     initialized.current = true
 
     // CRITICAL: Defer ALL initialization to prevent blocking hydration
-    // Use requestIdleCallback to run after browser is idle
+    // Use a longer delay to ensure app is fully loaded
     const init = () => {
       console.log('[Offline Init] Starting deferred initialization...')
       
@@ -160,37 +148,31 @@ export function OfflineInit() {
       })
 
       // Register service worker (fire-and-forget, non-blocking)
-      registerServiceWorker()
-        .then(registration => {
-          if (registration) {
-            console.log('[Offline Init] SW registered, scheduling menu pre-cache...')
-            // Pre-cache menu data after a longer delay (non-blocking)
-            // Wait 5 seconds to ensure app is fully loaded
-            setTimeout(() => {
-              preCacheMenuData().catch(err => {
-                console.warn('[Offline Init] Menu pre-cache failed:', err)
-              })
-            }, 5000)
-          } else {
-            console.log('[Offline Init] SW registration skipped or failed')
-          }
-        })
-        .catch(err => {
-          console.warn('[Offline Init] SW registration error:', err)
-        })
+      // Wait longer to ensure app is fully interactive
+      setTimeout(() => {
+        registerServiceWorker()
+          .then(registration => {
+            if (registration) {
+              console.log('[Offline Init] SW registered successfully')
+              // Pre-cache menu data after even longer delay
+              setTimeout(() => {
+                preCacheMenuData().catch(err => {
+                  console.warn('[Offline Init] Menu pre-cache failed:', err)
+                })
+              }, 10000) // Wait 10 seconds before pre-caching
+            }
+          })
+          .catch(err => {
+            console.warn('[Offline Init] SW registration error:', err)
+          })
+      }, 3000) // Wait 3 seconds before registering SW
       
       console.log('[Offline Init] Initialization scheduled')
     }
 
     // CRITICAL: Maximum deferral to prevent ANY blocking
-    // Use requestIdleCallback with a long timeout, or fallback to setTimeout
-    if ('requestIdleCallback' in window) {
-      // Wait until browser is completely idle, up to 5 seconds
-      requestIdleCallback(init, { timeout: 5000 })
-    } else {
-      // Fallback: wait 1 second before initializing
-      setTimeout(init, 1000)
-    }
+    // Wait 2 seconds before even starting initialization
+    setTimeout(init, 2000)
 
     // Cleanup
     return () => {

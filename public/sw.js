@@ -173,20 +173,17 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // CRITICAL: This SW should NEVER see /admin/ routes due to scope
-  // If we do, it means scope configuration is wrong
+  // CRITICAL: Let admin routes pass through to network (don't intercept)
   if (url.pathname.startsWith('/admin')) {
-    console.error('[User SW v10] ERROR: Received /admin route:', url.pathname);
-    console.error('[User SW v10] Admin routes should be handled by admin SW with scope /admin/');
-    return; // Don't handle it
+    // Let the request go to network, don't intercept
+    return;
   }
 
-  // CRITICAL: Ignore admin resources
+  // CRITICAL: Ignore admin resources (let them pass through)
   if (url.pathname === '/admin-manifest.json' || 
       url.pathname === '/admin/manifest.json' ||
       url.pathname.includes('admin-sw.js') ||
       url.pathname.includes('/admin/sw.js')) {
-    console.log('[User SW v10] Ignoring admin resources');
     return;
   }
 
@@ -390,44 +387,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NAVIGATION: Cache-first for pre-cached pages, network-first for others
+  // NAVIGATION: Network-first with cache fallback for better reliability
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // Check if page is pre-cached
-        const pagesCache = await caches.open(PAGES_CACHE);
-        const cachedPage = await pagesCache.match(url.pathname);
-        
-        if (cachedPage) {
-          console.log('[SW v10] Serving pre-cached page:', url.pathname);
-          
-          // Update cache in background if online
-          if (!isOffline()) {
-            fetch(request).then(response => {
-              if (response.ok) {
-                pagesCache.put(url.pathname, response).catch(() => {});
-              }
-            }).catch(() => {});
-          }
-          
-          return cachedPage;
-        }
-
-        // Not pre-cached - try network first
         try {
+          // Try network first for navigation
           const response = await fetch(request);
           
           // Cache successful navigation responses
           if (response.ok) {
             const responseClone = response.clone();
+            const pagesCache = await caches.open(PAGES_CACHE);
             pagesCache.put(url.pathname, responseClone).catch(() => {});
           }
           
           return response;
         } catch (error) {
-          console.log('[SW v10] Navigation offline:', url.pathname);
+          console.log('[SW v10] Navigation offline, trying cache:', url.pathname);
           
-          // Try any cached version
+          // Try cache on network failure
+          const pagesCache = await caches.open(PAGES_CACHE);
+          const cachedPage = await pagesCache.match(url.pathname);
+          
+          if (cachedPage) {
+            console.log('[SW v10] Serving cached page:', url.pathname);
+            return cachedPage;
+          }
+          
+          // Try runtime cache
           const runtimeCache = await caches.open(RUNTIME_CACHE);
           const runtimeCached = await runtimeCache.match(request);
           if (runtimeCached) {

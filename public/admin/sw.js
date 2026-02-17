@@ -224,20 +224,21 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         try {
+          // Try network first
           const response = await fetch(request);
           
           // Cache successful navigation
           if (response.ok) {
             const responseClone = response.clone();
-            caches.open(PAGES_CACHE).then(cache => 
-              cache.put(request, responseClone)
-            ).catch(() => {});
+            const pagesCache = await caches.open(PAGES_CACHE);
+            pagesCache.put(request, responseClone).catch(() => {});
           }
           
           return response;
         } catch (error) {
-          // Try cache
-          const cached = await caches.match(request);
+          // Try cache on network failure
+          const pagesCache = await caches.open(PAGES_CACHE);
+          const cached = await pagesCache.match(request);
           if (cached) {
             return cached;
           }
