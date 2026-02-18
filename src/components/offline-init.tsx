@@ -34,8 +34,7 @@ async function cleanupOldServiceWorkers(): Promise<void> {
             (name.includes('-v1') || name.includes('-v2') || name.includes('-v3') || 
              name.includes('-v4') || name.includes('-v5') || name.includes('-v6') ||
              name.includes('-v7') || name.includes('-v8') || name.includes('-v9') || 
-             name.includes('-v10') || name.includes('-v11') || name.includes('-v12') ||
-             name.includes('-v13'))
+             name.includes('-v10') || name.includes('-v11'))
           );
           
           if (hasOldCache) {
@@ -46,7 +45,7 @@ async function cleanupOldServiceWorkers(): Promise<void> {
             for (const cacheName of cacheNames) {
               if (cacheName.includes('at-restaurant-') && 
                   !cacheName.includes('admin') &&
-                  !cacheName.includes('-v14')) {
+                  !cacheName.includes('-v12')) {
                 console.log('[User SW Cleanup] Deleting old cache:', cacheName);
                 await caches.delete(cacheName);
               }
@@ -94,7 +93,7 @@ async function registerUserServiceWorker(): Promise<ServiceWorkerRegistration | 
       }
     }
 
-    console.log('[User SW] Registering v14 with scope /...');
+    console.log('[User SW] Registering v12 with scope /...');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'
@@ -184,44 +183,22 @@ export function OfflineInit() {
         console.warn('[Offline Init] Asset cleanup failed:', err);
       });
 
-      // CRITICAL: Register SW after load event to never block critical rendering path
-      if (document.readyState === 'complete') {
-        // Already loaded
-        registerUserServiceWorker()
-          .then(registration => {
-            if (registration) {
-              console.log('[Offline Init] User SW registered successfully');
-              // Pre-cache menu data after 5 seconds
-              setTimeout(() => {
-                preCacheMenuData().catch(err => {
-                  console.warn('[Offline Init] Menu pre-cache failed:', err);
-                });
-              }, 5000);
-            }
-          })
-          .catch(err => {
-            console.warn('[Offline Init] SW registration error:', err);
-          });
-      } else {
-        // Wait for load event
-        window.addEventListener('load', () => {
-          registerUserServiceWorker()
-            .then(registration => {
-              if (registration) {
-                console.log('[Offline Init] User SW registered successfully');
-                // Pre-cache menu data after 5 seconds
-                setTimeout(() => {
-                  preCacheMenuData().catch(err => {
-                    console.warn('[Offline Init] Menu pre-cache failed:', err);
-                  });
-                }, 5000);
-              }
-            })
-            .catch(err => {
-              console.warn('[Offline Init] SW registration error:', err);
-            });
+      // Register SW immediately (non-blocking)
+      registerUserServiceWorker()
+        .then(registration => {
+          if (registration) {
+            console.log('[Offline Init] User SW registered successfully');
+            // Pre-cache menu data after 5 seconds
+            setTimeout(() => {
+              preCacheMenuData().catch(err => {
+                console.warn('[Offline Init] Menu pre-cache failed:', err);
+              });
+            }, 5000);
+          }
+        })
+        .catch(err => {
+          console.warn('[Offline Init] SW registration error:', err);
         });
-      }
       
       console.log('[Offline Init] Complete');
     };

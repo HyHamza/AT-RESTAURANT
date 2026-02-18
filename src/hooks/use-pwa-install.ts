@@ -22,21 +22,17 @@ export function usePWAInstall(scope: 'user' | 'admin' = 'user'): PWAInstallState
   const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
-    // CRITICAL: Check if app is already running in standalone mode
-    const standalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    
+    // Check if app is running in standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
     setIsStandalone(standalone)
 
-    // If already in standalone mode, mark as installed
+    // Check if app is already installed
     if (standalone) {
       const currentUrl = window.location.href
       const isAdminUrl = currentUrl.includes('/admin')
       
       if ((scope === 'admin' && isAdminUrl) || (scope === 'user' && !isAdminUrl)) {
         setIsInstalled(true)
-        console.log(`[usePWAInstall] ${scope} app already running in standalone mode`);
         return
       }
     }
@@ -51,17 +47,6 @@ export function usePWAInstall(scope: 'user' | 'admin' = 'user'): PWAInstallState
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      
-      // CRITICAL: Double-check standalone mode even if event fires
-      const isStandalone = 
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
-      
-      if (isStandalone) {
-        console.log(`[usePWAInstall] ${scope} app in standalone mode - ignoring beforeinstallprompt`);
-        return;
-      }
-      
       setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
 

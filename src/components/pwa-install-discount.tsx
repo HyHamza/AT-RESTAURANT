@@ -37,37 +37,15 @@ export function PWAInstallDiscount({
   const { isEligible, activateDiscount } = usePWADiscountContext()
 
   useEffect(() => {
-    // CRITICAL: Check if app is already running in standalone mode
-    const isStandalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    
-    if (isStandalone) {
-      setIsInstalled(true);
-      console.log('[PWA Install Discount] Already running in standalone mode - suppressing install prompt');
-      
-      // If installed but discount not activated, activate it
-      if (!isEligible) {
-        activateDiscount().then(success => {
-          if (success) {
-            setShowSuccessMessage(true)
-            setTimeout(() => setShowSuccessMessage(false), 5000)
-          }
-        })
-      }
-      return;
-    }
-
     // Track page views
     const currentViews = parseInt(sessionStorage.getItem('pwa-page-views') || '0', 10)
     const newViews = currentViews + 1
     sessionStorage.setItem('pwa-page-views', newViews.toString())
     setPageViews(newViews)
 
-    // Check if user app is already installed via localStorage
-    const userInstalled = localStorage.getItem('pwa-installed') === 'true';
-    if (userInstalled) {
-      setIsInstalled(true);
+    // Check if app is already installed
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
       
       // If installed but discount not activated, activate it
       if (!isEligible) {
@@ -78,7 +56,7 @@ export function PWAInstallDiscount({
           }
         })
       }
-      return;
+      return
     }
 
     // Check if user has already dismissed the prompt
@@ -103,25 +81,7 @@ export function PWAInstallDiscount({
     // Listen for the beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      
-      // CRITICAL: Double-check standalone mode even if event fires
-      const isStandalone = 
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
-      
-      if (isStandalone) {
-        console.log('[PWA Install Discount] Standalone mode detected - ignoring beforeinstallprompt');
-        return;
-      }
-      
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      
-      // Check if user has dismissed before
-      const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-dismissed');
-      if (hasSeenPrompt) {
-        console.log('[PWA Install Discount] User previously dismissed - not showing prompt');
-        return;
-      }
       
       // Show install prompt after delay and minimum page views
       setTimeout(() => {

@@ -1,7 +1,7 @@
 {
   "id": "com.atrestaurant.admin",
   "name": "AT Restaurant Admin",
-  "short_name": "Admin",
+  "short_name": "Admin Panel",
   "description": "Manage orders, menu, customers, and restaurant operations",
   "start_url": "/admin/?source=pwa",
   "scope": "/admin/",

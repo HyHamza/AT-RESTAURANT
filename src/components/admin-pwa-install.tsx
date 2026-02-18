@@ -87,7 +87,7 @@ async function registerAdminServiceWorker(): Promise<ServiceWorkerRegistration |
       }
     }
 
-    console.log('[Admin SW] Registering v6 with scope /admin/...');
+    console.log('[Admin SW] Registering v4 with scope /admin/...');
     const registration = await navigator.serviceWorker.register('/admin/sw.js', {
       scope: '/admin/',
       updateViaCache: 'none'
@@ -133,29 +133,13 @@ export function AdminPWAInstall() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // CRITICAL: Scope-aware standalone check
-    // Only suppress if ADMIN PWA specifically is running in standalone mode
-    const isStandalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    
-    const isAdminRoute = window.location.pathname.startsWith('/admin');
-    
-    // Only suppress install prompt if we're in standalone mode AND on admin route
-    // This means the admin PWA specifically is installed and running
-    const isAdminStandalone = isStandalone && isAdminRoute;
-    
-    if (isAdminStandalone) {
-      setIsInstalled(true);
-      console.log('[Admin PWA] Admin app running in standalone mode - suppressing install prompt');
-      return;
-    }
-
-    // Check if admin app is already installed via localStorage
-    const adminInstalled = localStorage.getItem('admin-pwa-installed') === 'true';
-    if (adminInstalled) {
-      setIsInstalled(true);
-      return;
+    // Check if admin app is already installed
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      const currentUrl = window.location.href
+      if (currentUrl.includes('/admin')) {
+        setIsInstalled(true)
+        return
+      }
     }
 
     // Register admin service worker immediately
@@ -179,29 +163,7 @@ export function AdminPWAInstall() {
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      
-      // CRITICAL: Scope-aware standalone check
-      const isStandalone = 
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
-      
-      const isAdminRoute = window.location.pathname.startsWith('/admin');
-      const isAdminStandalone = isStandalone && isAdminRoute;
-      
-      // Only suppress if admin PWA specifically is in standalone mode
-      if (isAdminStandalone) {
-        console.log('[Admin PWA] Admin app in standalone mode - ignoring beforeinstallprompt');
-        return;
-      }
-      
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      
-      // Check if user has dismissed before
-      const hasSeenPrompt = localStorage.getItem('admin-pwa-install-prompt-dismissed');
-      if (hasSeenPrompt) {
-        console.log('[Admin PWA] User previously dismissed - not showing prompt');
-        return;
-      }
       
       setTimeout(() => {
         const hasSeenPrompt = localStorage.getItem('admin-pwa-install-prompt-seen')
@@ -257,8 +219,6 @@ export function AdminPWAInstall() {
       isIOS ? 'admin-pwa-ios-install-prompt-seen' : 'admin-pwa-install-prompt-seen', 
       'true'
     )
-    // Mark as dismissed so we don't show again
-    localStorage.setItem('admin-pwa-install-prompt-dismissed', 'true')
   }
 
   if (isInstalled || !showInstallPrompt) {

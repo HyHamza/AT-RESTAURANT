@@ -1,157 +1,62 @@
-// AT Restaurant - User Service Worker v14 - Fast Navigation
-const CACHE_VERSION = 'user-v14';
+// AT Restaurant - User Service Worker v12 - Performance Optimized
+const CACHE_VERSION = 'user-v12';
 const STATIC_CACHE = `at-restaurant-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `at-restaurant-images-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK = '/offline';
-const CACHE_TIMEOUT = 1000; // 1 second timeout for cache operations
 
 // Minimal precache - only offline page
-const PRECACHE_URLS = [OFFLINE_FALLBACK];
+const PRECACHE_URLS = [
+  OFFLINE_FALLBACK,
+  '/manifest.json'
+];
 
-// Install - Non-blocking, immediate activation
+// Install - Minimal precache, immediate activation
 self.addEventListener('install', (event) => {
-  console.log('[User SW v14] Installing...');
+  console.log('[User SW v12] Installing...');
   
-  // Skip waiting immediately - never block
-  self.skipWaiting();
-  
-  // Precache in background, don't block on it
   event.waitUntil(
     (async () => {
-      try {
-        const cache = await Promise.race([
-          caches.open(STATIC_CACHE),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
-        ]);
-        
-        await Promise.allSettled(
-          PRECACHE_URLS.map(url => 
-            Promise.race([
-              cache.add(url),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Cache add timeout')), CACHE_TIMEOUT))
-            ]).catch(err => {
-              console.warn('[User SW v14] Failed to precache:', url, err.message);
-            })
-          )
-        );
-        
-        console.log('[User SW v14] Precache complete (non-blocking)');
-      } catch (error) {
-        console.warn('[User SW v14] Precache error (non-critical):', error.message);
-      }
+      const cache = await caches.open(STATIC_CACHE);
+      await cache.addAll(PRECACHE_URLS).catch(err => {
+        console.warn('[User SW v12] Precache failed:', err);
+      });
+      await self.skipWaiting();
+      console.log('[User SW v12] Installed and skipped waiting');
     })()
   );
 });
 
-// Activate - Clean old caches and validate integrity
+// Activate - Clean old caches, immediate claim
 self.addEventListener('activate', (event) => {
-  console.log('[User SW v14] Activating...');
-  
-  // Claim clients immediately
-  self.clients.claim();
+  console.log('[User SW v12] Activating...');
   
   event.waitUntil(
     (async () => {
-      try {
-        const cacheNames = await caches.keys();
-        const validCaches = [STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE];
-        
-        // Delete old caches
-        await Promise.all(
-          cacheNames
-            .filter(name => 
-              name.startsWith('at-restaurant-') && 
-              !name.startsWith('at-restaurant-admin-') && 
-              !validCaches.includes(name)
-            )
-            .map(name => {
-              console.log('[User SW v14] Deleting old cache:', name);
-              return caches.delete(name).catch(() => {});
-            })
-        );
-        
-        // Cache integrity check - validate and clean corrupted entries
-        for (const cacheName of validCaches) {
-          try {
-            const cache = await caches.open(cacheName);
-            const requests = await cache.keys();
-            
-            for (const request of requests) {
-              try {
-                const response = await cache.match(request);
-                
-                // Validate response
-                if (!response || !response.ok || response.status < 200 || response.status >= 300) {
-                  console.log('[User SW v14] Deleting corrupted cache entry:', request.url);
-                  await cache.delete(request);
-                }
-              } catch (error) {
-                // If reading fails, delete the entry
-                console.log('[User SW v14] Deleting unreadable cache entry:', request.url);
-                await cache.delete(request).catch(() => {});
-              }
-            }
-          } catch (error) {
-            console.warn('[User SW v14] Cache integrity check failed for:', cacheName);
-          }
-        }
-        
-        console.log('[User SW v14] Activated and cache validated');
-      } catch (error) {
-        console.warn('[User SW v14] Activation error:', error);
-      }
+      const cacheNames = await caches.keys();
+      const validCaches = [STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE];
+      
+      await Promise.all(
+        cacheNames
+          .filter(name => 
+            name.startsWith('at-restaurant-') && 
+            !name.startsWith('at-restaurant-admin-') && 
+            !validCaches.includes(name)
+          )
+          .map(name => {
+            console.log('[User SW v12] Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      );
+      
+      await self.clients.claim();
+      console.log('[User SW v12] Activated and claimed clients');
     })()
   );
 });
 
-// Safe cache match with validation
-async function safeCacheMatch(request, cacheName) {
-  try {
-    const cache = await Promise.race([
-      caches.open(cacheName),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
-    ]);
-    
-    const response = await Promise.race([
-      cache.match(request),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Cache match timeout')), CACHE_TIMEOUT))
-    ]);
-    
-    // Validate response
-    if (response && response.ok && response.status >= 200 && response.status < 300) {
-      return response;
-    }
-    
-    // Invalid response - delete it
-    if (response) {
-      cache.delete(request).catch(() => {});
-    }
-    
-    return null;
-  } catch (error) {
-    return null;
-  }
-}
-
-// Safe cache put with timeout - non-blocking
-function safeCachePut(cacheName, request, response) {
-  // Fire and forget - never wait for cache writes
-  Promise.race([
-    caches.open(cacheName),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
-  ]).then(cache => {
-    return Promise.race([
-      cache.put(request, response),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Cache put timeout')), CACHE_TIMEOUT))
-    ]);
-  }).catch(() => {
-    // Silently fail - never block
-  });
-}
-
-// Fetch - Optimized for fast navigation
+// Fetch - Optimized for navigation performance
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -179,28 +84,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NAVIGATION - Network ONLY, no cache delays
-  // CRITICAL: Direct navigation (typing URL, clicking link) must be instant
+  // NAVIGATION - NetworkFirst with 3s timeout
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          // Pure network fetch - no cache lookups that cause delays
-          const response = await fetch(request);
+          // Network first with timeout
+          const networkPromise = fetch(request);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Network timeout')), 3000)
+          );
           
-          // Cache in background (fire and forget - non-blocking)
+          const response = await Promise.race([networkPromise, timeoutPromise]);
+          
+          // Cache successful navigation responses
           if (response.ok) {
-            safeCachePut(RUNTIME_CACHE, request, response.clone());
+            const cache = await caches.open(RUNTIME_CACHE);
+            cache.put(request, response.clone()).catch(() => {});
           }
           
           return response;
         } catch (error) {
-          // Only on network failure, try cache
-          const cached = await safeCacheMatch(request, RUNTIME_CACHE);
+          console.log('[User SW v12] Navigation offline, serving fallback');
+          
+          // Try cached version
+          const cached = await caches.match(request);
           if (cached) return cached;
           
           // Serve offline page
-          const offlinePage = await safeCacheMatch(OFFLINE_FALLBACK, STATIC_CACHE);
+          const offlinePage = await caches.match(OFFLINE_FALLBACK);
           if (offlinePage) return offlinePage;
           
           // Final fallback
@@ -269,22 +181,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /_next/static/ - CacheFirst (these are immutable versioned assets)
+  // /_next/static/ - CacheFirst with 365 day expiration
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       (async () => {
-        const cached = await safeCacheMatch(request, RUNTIME_CACHE);
+        const cached = await caches.match(request);
         if (cached) return cached;
 
-        try {
-          const response = await fetch(request);
-          if (response.ok) {
-            safeCachePut(RUNTIME_CACHE, request, response.clone());
-          }
-          return response;
-        } catch (error) {
-          return new Response(null, { status: 503 });
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(RUNTIME_CACHE);
+          cache.put(request, response.clone()).catch(() => {});
         }
+        return response;
       })()
     );
     return;
@@ -296,11 +205,12 @@ self.addEventListener('fetch', (event) => {
       /\.(jpg|jpeg|png|gif|webp|svg|ico)$/i.test(url.pathname)) {
     event.respondWith(
       (async () => {
-        const cached = await safeCacheMatch(request, IMAGE_CACHE);
+        const cached = await caches.match(request);
         
         const fetchPromise = fetch(request).then(response => {
           if (response.ok) {
-            safeCachePut(IMAGE_CACHE, request, response.clone());
+            const cache = caches.open(IMAGE_CACHE);
+            cache.then(c => c.put(request, response.clone())).catch(() => {});
           }
           return response;
         }).catch(() => null);
@@ -311,35 +221,55 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /api/ routes - Network only (no caching for API calls)
+  // /api/ routes - NetworkFirst with 10s timeout
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(request).catch(() => 
-        new Response(
-          JSON.stringify({ error: 'Offline', offline: true }),
-          { 
-            headers: { 'Content-Type': 'application/json' }, 
-            status: 503 
+      (async () => {
+        try {
+          const networkPromise = fetch(request);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('API timeout')), 10000)
+          );
+          
+          const response = await Promise.race([networkPromise, timeoutPromise]);
+          
+          if (response.ok) {
+            const cache = await caches.open(RUNTIME_CACHE);
+            cache.put(request, response.clone()).catch(() => {});
           }
-        )
-      )
+          
+          return response;
+        } catch (error) {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          
+          return new Response(
+            JSON.stringify({ error: 'Offline', offline: true }),
+            { 
+              headers: { 'Content-Type': 'application/json' }, 
+              status: 503 
+            }
+          );
+        }
+      })()
     );
     return;
   }
 
-  // All other requests - Network first, fast fallback
+  // All other requests - StaleWhileRevalidate
   event.respondWith(
     (async () => {
-      try {
-        const response = await fetch(request);
+      const cached = await caches.match(request);
+      
+      const fetchPromise = fetch(request).then(response => {
         if (response.ok) {
-          safeCachePut(RUNTIME_CACHE, request, response.clone());
+          const cache = caches.open(RUNTIME_CACHE);
+          cache.then(c => c.put(request, response.clone())).catch(() => {});
         }
         return response;
-      } catch (error) {
-        const cached = await safeCacheMatch(request, RUNTIME_CACHE);
-        return cached || new Response(null, { status: 503 });
-      }
+      }).catch(() => null);
+
+      return cached || fetchPromise || new Response(null, { status: 503 });
     })()
   );
 });
@@ -351,4 +281,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[User SW v14] Loaded - Fast navigation, no blocking cache');
+console.log('[User SW v12] Loaded - Scope: / (excluding /admin)');
