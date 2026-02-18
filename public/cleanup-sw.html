@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Worker Cleanup - AT Restaurant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #fef5f9 0%, #fff 50%, #fef5f9 100%);
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #e11b70;
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #e11b70;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #c01560;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background: #f0f0f0;
+      color: #333;
+      font-family: monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Service Worker Cleanup</h1>
+    <p>
+      If you're experiencing navigation issues or slow page loads, this tool will clean up all service workers and caches, then reload the app with fresh service workers.
+    </p>
+    <p>
+      <strong>What this does:</strong>
+    </p>
+    <ul style="margin-left: 20px; margin-bottom: 20px; color: #666;">
+      <li>Unregisters all service workers</li>
+      <li>Clears all cached data</li>
+      <li>Reloads the app with fresh service workers</li>
+    </ul>
+    
+    <button id="cleanupBtn" onclick="cleanup()">Clean Up & Reload</button>
+    <button onclick="window.location.href='/'">Cancel</button>
+    
+    <div id="status" class="status" style="display: none;"></div>
+  </div>
+
+  <script>
+    async function cleanup() {
+      const btn = document.getElementById('cleanupBtn');
+      const status = document.getElementById('status');
+      
+      btn.disabled = true;
+      status.style.display = 'block';
+      status.className = 'status';
+      status.textContent = 'Starting cleanup...\n';
+      
+      try {
+        if (!('serviceWorker' in navigator)) {
+          throw new Error('Service workers not supported');
+        }
+
+        // Unregister all service workers
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        status.textContent += `Found ${registrations.length} service worker(s)\n`;
+        
+        for (const registration of registrations) {
+          const scriptURL = registration.active?.scriptURL || 
+                           registration.installing?.scriptURL || 
+                           registration.waiting?.scriptURL;
+          status.textContent += `Unregistering: ${scriptURL}\n`;
+          await registration.unregister();
+        }
+        
+        status.textContent += '\n✓ All service workers unregistered\n\n';
+
+        // Clear all caches
+        const cacheNames = await caches.keys();
+        status.textContent += `Found ${cacheNames.length} cache(s)\n`;
+        
+        for (const cacheName of cacheNames) {
+          status.textContent += `Deleting cache: ${cacheName}\n`;
+          await caches.delete(cacheName);
+        }
+        
+        status.textContent += '\n✓ All caches cleared\n\n';
+        status.textContent += '✓ Cleanup complete!\n';
+        status.textContent += '\nReloading in 2 seconds...';
+        status.className = 'status success';
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+        
+      } catch (error) {
+        status.textContent += `\n✗ Error: ${error.message}\n`;
+        status.className = 'status error';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Admin Service Worker (NEW LOCATION)
+      // Admin Service Worker
       {
         source: '/admin/sw.js',
         headers: [
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=3600',
           },
           {
             key: 'Content-Type',
@@ -54,13 +54,13 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Admin Manifest (NEW LOCATION)
+      // Admin Manifest
       {
         source: '/admin/manifest.json',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=3600',
           },
           {
             key: 'Content-Type',
@@ -80,17 +80,14 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Enable experimental features for better PWA support
   experimental: {
     optimizeCss: true,
   },
 
-  // Image optimization - Allow any external domain
   images: {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // Allow any external domain for images
     remotePatterns: [
       {
         protocol: 'https',
@@ -101,13 +98,11 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
-    // Re-enable optimization for Supabase Storage
     unoptimized: false,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // Output configuration for Vercel
   output: 'standalone',
 };
 

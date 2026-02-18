@@ -1,11 +1,11 @@
-// AT Restaurant - Service Worker v10 - Complete Offline-First with Pre-caching
-const CACHE_VERSION = 'v10';
+// AT Restaurant - User Service Worker v11 - Fixed Navigation & Scope
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `at-restaurant-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`;
 const API_CACHE = `at-restaurant-api-${CACHE_VERSION}`;
 const PAGES_CACHE = `at-restaurant-pages-${CACHE_VERSION}`;
 
-// CRITICAL: Pre-cache ALL public pages and essential assets during install
+// Pre-cache essential user pages
 const PRECACHE_PAGES = [
   '/',
   '/menu',
@@ -14,246 +14,83 @@ const PRECACHE_PAGES = [
   '/settings',
   '/location',
   '/order-status',
-  '/privacy',
-  '/terms',
-  '/offline',
-  '/login',
-  '/signup'
+  '/offline'
 ];
 
-// Essential static assets to pre-cache
 const PRECACHE_ASSETS = [
   '/manifest.json',
-  '/assets/icons/favicon.ico',
-  '/assets/icons/favicon.svg',
-  '/assets/icons/favicon-16x16.png',
-  '/assets/icons/favicon-32x32.png',
-  '/assets/icons/apple-touch-icon.png',
   '/assets/icons/android-chrome-192x192.png',
   '/assets/icons/android-chrome-512x512.png'
 ];
 
-// Supabase domains to intercept when offline
-const SUPABASE_DOMAINS = [
-  'supabase.co',
-  'supabase.com'
-];
-
-// Install event - Pre-cache ALL pages and assets
+// Install - Pre-cache essentials
 self.addEventListener('install', (event) => {
-  console.log('[SW v10] Installing - Pre-caching all pages...');
+  console.log('[User SW v11] Installing...');
   
   event.waitUntil(
     (async () => {
       try {
         const cache = await caches.open(CACHE_NAME);
-        const pagesCache = await caches.open(PAGES_CACHE);
-        
-        // Pre-cache static assets
-        console.log('[SW v10] Pre-caching static assets...');
         await Promise.allSettled(
           PRECACHE_ASSETS.map(url => 
             cache.add(url).catch(err => 
-              console.warn(`[SW v10] Failed to cache asset ${url}:`, err.message)
+              console.warn(`[User SW v11] Failed to cache ${url}:`, err.message)
             )
           )
         );
-        
-        // Pre-cache ALL pages
-        console.log('[SW v10] Pre-caching all pages...');
-        const pagePromises = PRECACHE_PAGES.map(async (url) => {
-          try {
-            const response = await fetch(url, {
-              credentials: 'same-origin',
-              headers: {
-                'Accept': 'text/html'
-              }
-            });
-            
-            if (response.ok) {
-              await pagesCache.put(url, response);
-              console.log(`[SW v10] ✓ Cached page: ${url}`);
-            } else {
-              console.warn(`[SW v10] ✗ Failed to cache ${url}: ${response.status}`);
-            }
-          } catch (err) {
-            console.warn(`[SW v10] ✗ Error caching ${url}:`, err.message);
-          }
-        });
-        
-        await Promise.allSettled(pagePromises);
-        
-        console.log('[SW v10] Pre-cache complete - All pages cached!');
+        console.log('[User SW v11] Pre-cache complete');
       } catch (error) {
-        console.error('[SW v10] Pre-cache error:', error);
+        console.warn('[User SW v11] Pre-cache error:', error);
       }
       
-      // Skip waiting to activate immediately
       await self.skipWaiting();
-      console.log('[SW v10] Skipped waiting - activating immediately');
     })()
   );
 });
 
-// Activate event - Clean old caches and claim clients
+// Activate - Clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW v10] Activating...');
+  console.log('[User SW v11] Activating...');
   
   event.waitUntil(
     (async () => {
-      try {
-        // Delete old caches
-        const cacheNames = await caches.keys();
-        const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE, PAGES_CACHE];
-        
-        await Promise.all(
-          cacheNames
-            .filter(name => !validCaches.includes(name))
-            .map(name => {
-              console.log('[SW v10] Deleting old cache:', name);
-              return caches.delete(name);
-            })
-        );
-        
-        console.log('[SW v10] Cache cleanup complete');
-      } catch (error) {
-        console.warn('[SW v10] Cache cleanup error:', error);
-      }
-
-      // Claim all clients immediately
+      const cacheNames = await caches.keys();
+      const validCaches = [CACHE_NAME, RUNTIME_CACHE, API_CACHE, PAGES_CACHE];
+      
+      await Promise.all(
+        cacheNames
+          .filter(name => name.startsWith('at-restaurant-') && !name.startsWith('at-restaurant-admin-') && !validCaches.includes(name))
+          .map(name => {
+            console.log('[User SW v11] Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      );
+      
       await self.clients.claim();
-      console.log('[SW v10] Claimed all clients');
-      
-      // Notify clients
-      const clients = await self.clients.matchAll({ type: 'window' });
-      clients.forEach(client => {
-        client.postMessage({ 
-          type: 'SW_ACTIVATED', 
-          version: CACHE_VERSION,
-          precachedPages: PRECACHE_PAGES.length,
-          timestamp: Date.now()
-        });
-      });
-      
-      console.log('[SW v10] Fully activated - Offline-first ready!');
+      console.log('[User SW v11] Activated - User routes only');
     })()
   );
 });
 
-// Helper: Check if offline
-function isOffline() {
-  return !self.navigator.onLine;
-}
-
-// Helper: Check if Supabase request
-function isSupabaseRequest(url) {
-  return SUPABASE_DOMAINS.some(domain => url.hostname.includes(domain));
-}
-
-// Helper: Create offline response for Supabase auth
-function createOfflineAuthResponse() {
-  return new Response(
-    JSON.stringify({
-      error: 'offline',
-      message: 'Authentication unavailable offline',
-      offline: true
-    }),
-    {
-      status: 503,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Offline': 'true'
-      }
-    }
-  );
-}
-
-// Fetch event - Comprehensive offline handling
+// Fetch - CRITICAL: Proper scope isolation
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // CRITICAL: Let admin routes pass through to network (don't intercept)
+  // CRITICAL: NEVER intercept /admin routes - let them pass through completely
+  // This SW should ONLY see non-admin routes due to scope, but double-check
   if (url.pathname.startsWith('/admin')) {
-    // Let the request go to network, don't intercept
+    // Don't call event.respondWith() - let the request go to network naturally
     return;
   }
 
-  // CRITICAL: Ignore admin resources (let them pass through)
-  if (url.pathname === '/admin-manifest.json' || 
-      url.pathname === '/admin/manifest.json' ||
-      url.pathname.includes('admin-sw.js') ||
-      url.pathname.includes('/admin/sw.js')) {
-    return;
-  }
-
-  // Skip non-GET requests (except for offline Supabase handling)
-  if (request.method !== 'GET' && !isSupabaseRequest(url)) {
-    return;
-  }
+  // Skip non-GET requests
+  if (request.method !== 'GET') return;
 
   // Skip non-HTTP protocols
-  if (!url.protocol.startsWith('http')) {
-    return;
-  }
+  if (!url.protocol.startsWith('http')) return;
 
-  // CRITICAL: Intercept Supabase requests when offline
-  if (isSupabaseRequest(url)) {
-    event.respondWith(
-      (async () => {
-        // If offline, return cached response or offline response
-        if (isOffline()) {
-          console.log('[SW v10] Blocking Supabase request (offline):', url.pathname);
-          
-          // Try to return cached response
-          const cached = await caches.match(request);
-          if (cached) {
-            console.log('[SW v10] Returning cached Supabase response');
-            return cached;
-          }
-          
-          // Return offline response
-          return createOfflineAuthResponse();
-        }
-        
-        // Online - try network with timeout
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          
-          const response = await fetch(request, {
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          // Cache successful responses
-          if (response.ok && request.method === 'GET') {
-            const responseClone = response.clone();
-            caches.open(API_CACHE).then(cache => 
-              cache.put(request, responseClone)
-            ).catch(() => {});
-          }
-          
-          return response;
-        } catch (error) {
-          console.log('[SW v10] Supabase request failed:', error.message);
-          
-          // Try cache
-          const cached = await caches.match(request);
-          if (cached) {
-            return cached;
-          }
-          
-          // Return offline response
-          return createOfflineAuthResponse();
-        }
-      })()
-    );
-    return;
-  }
-
-  // Skip Next.js internal requests (let them pass through)
+  // Skip Next.js internals
   if (
     url.pathname.startsWith('/_next/webpack-hmr') ||
     url.pathname.startsWith('/__nextjs_') ||
@@ -262,322 +99,161 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // VIDEOS: Always network-only, never cache
+  // Videos - Network only
   if (request.destination === 'video' || url.pathname.match(/\.(mp4|webm|ogg)$/)) {
     event.respondWith(
-      (async () => {
-        try {
-          return await fetch(request, { cache: 'no-store' });
-        } catch (error) {
-          return new Response(null, { 
-            status: 503, 
-            statusText: 'Video unavailable offline' 
-          });
-        }
-      })()
+      fetch(request, { cache: 'no-store' }).catch(() => 
+        new Response(null, { status: 503 })
+      )
     );
     return;
   }
 
-  // Next.js chunks and static files: Cache-first with network fallback
+  // Next.js chunks - Cache first with background update
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       (async () => {
-        // Try cache first
         const cached = await caches.match(request);
         if (cached) {
-          console.log('[SW v10] Serving cached chunk:', url.pathname);
-          
-          // Update cache in background
-          if (!isOffline()) {
-            fetch(request).then(response => {
-              if (response.ok) {
-                caches.open(RUNTIME_CACHE).then(cache => 
-                  cache.put(request, response)
-                ).catch(() => {});
-              }
-            }).catch(() => {});
-          }
-          
+          // Update in background
+          fetch(request).then(response => {
+            if (response.ok) {
+              caches.open(RUNTIME_CACHE).then(cache => 
+                cache.put(request, response)
+              ).catch(() => {});
+            }
+          }).catch(() => {});
           return cached;
         }
 
-        // Not in cache - fetch from network
-        try {
-          const response = await fetch(request);
-          
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(RUNTIME_CACHE).then(cache => 
-              cache.put(request, responseClone)
-            ).catch(() => {});
-          }
-          
-          return response;
-        } catch (error) {
-          console.warn('[SW v10] Chunk failed:', url.pathname);
-          
-          // Return empty response to prevent errors
-          if (request.destination === 'script') {
-            return new Response('console.log("[SW] Offline chunk");', {
-              status: 200,
-              headers: { 'Content-Type': 'application/javascript' }
-            });
-          }
-          
-          if (request.destination === 'style') {
-            return new Response('/* Offline */', {
-              status: 200,
-              headers: { 'Content-Type': 'text/css' }
-            });
-          }
-          
-          return new Response(null, { status: 503 });
+        const response = await fetch(request);
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then(cache => 
+            cache.put(request, clone)
+          ).catch(() => {});
         }
+        return response;
       })()
     );
     return;
   }
 
-  // External images: CORS handling
-  if (request.destination === 'image' && url.origin !== self.location.origin) {
-    event.respondWith(
-      (async () => {
-        try {
-          return await fetch(request, { mode: 'no-cors' });
-        } catch (error) {
-          // Return 1x1 transparent GIF
-          return new Response(
-            new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
-            { status: 200, headers: { 'Content-Type': 'image/gif' } }
-          );
-        }
-      })()
-    );
-    return;
-  }
-
-  // API routes: Network-first with cache fallback
+  // API routes - Network first
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      (async () => {
-        try {
-          const response = await fetch(request);
-          
+      fetch(request)
+        .then(response => {
           if (response.ok) {
-            const responseClone = response.clone();
+            const clone = response.clone();
             caches.open(API_CACHE).then(cache => 
-              cache.put(request, responseClone)
+              cache.put(request, clone)
             ).catch(() => {});
           }
-          
           return response;
-        } catch (error) {
+        })
+        .catch(async () => {
           const cached = await caches.match(request);
           return cached || new Response(
-            JSON.stringify({ error: 'Offline', offline: true }),
-            { 
-              headers: { 'Content-Type': 'application/json' }, 
-              status: 503 
-            }
+            JSON.stringify({ error: 'Offline' }),
+            { headers: { 'Content-Type': 'application/json' }, status: 503 }
           );
-        }
-      })()
+        })
     );
     return;
   }
 
-  // NAVIGATION: Network-first with cache fallback for better reliability
+  // NAVIGATION - Network first, NEVER block
   if (request.mode === 'navigate') {
     event.respondWith(
-      (async () => {
-        try {
-          // Try network first for navigation
-          const response = await fetch(request);
-          
-          // Cache successful navigation responses
+      fetch(request)
+        .then(response => {
           if (response.ok) {
-            const responseClone = response.clone();
-            const pagesCache = await caches.open(PAGES_CACHE);
-            pagesCache.put(url.pathname, responseClone).catch(() => {});
+            const clone = response.clone();
+            caches.open(PAGES_CACHE).then(cache => 
+              cache.put(url.pathname, clone)
+            ).catch(() => {});
           }
-          
           return response;
-        } catch (error) {
-          console.log('[SW v10] Navigation offline, trying cache:', url.pathname);
-          
-          // Try cache on network failure
+        })
+        .catch(async () => {
           const pagesCache = await caches.open(PAGES_CACHE);
-          const cachedPage = await pagesCache.match(url.pathname);
+          const cached = await pagesCache.match(url.pathname);
           
-          if (cachedPage) {
-            console.log('[SW v10] Serving cached page:', url.pathname);
-            return cachedPage;
-          }
+          if (cached) return cached;
           
-          // Try runtime cache
-          const runtimeCache = await caches.open(RUNTIME_CACHE);
-          const runtimeCached = await runtimeCache.match(request);
-          if (runtimeCached) {
-            return runtimeCached;
-          }
-          
-          // Serve offline page
           const offlinePage = await pagesCache.match('/offline');
-          if (offlinePage) {
-            return offlinePage;
-          }
+          if (offlinePage) return offlinePage;
           
-          // Inline offline page
           return new Response(
             `<!DOCTYPE html>
             <html lang="en">
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Offline - AT Restaurant</title>
+              <title>Offline</title>
               <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  font-family: system-ui, sans-serif;
                   display: flex;
                   align-items: center;
                   justify-content: center;
                   min-height: 100vh;
-                  background: linear-gradient(135deg, #fef5f9 0%, #fff 50%, #fef5f9 100%);
-                  padding: 20px;
+                  margin: 0;
+                  background: linear-gradient(135deg, #fef5f9 0%, #fff 100%);
                 }
                 .container {
                   text-align: center;
-                  max-width: 500px;
+                  padding: 2rem;
                 }
                 h1 {
                   color: #e11b70;
-                  font-size: 2.5em;
-                  margin-bottom: 20px;
-                }
-                p {
-                  color: #666;
-                  font-size: 1.1em;
-                  line-height: 1.6;
-                  margin-bottom: 30px;
+                  font-size: 2rem;
+                  margin-bottom: 1rem;
                 }
                 button {
                   background: #e11b70;
                   color: white;
                   border: none;
-                  padding: 15px 30px;
-                  font-size: 1em;
+                  padding: 12px 24px;
+                  font-size: 1rem;
                   border-radius: 8px;
                   cursor: pointer;
-                  transition: background 0.2s;
-                }
-                button:hover {
-                  background: #c01560;
-                }
-                .icon {
-                  font-size: 4em;
-                  margin-bottom: 20px;
-                }
-                .cached-pages {
-                  margin-top: 30px;
-                  padding: 20px;
-                  background: white;
-                  border-radius: 12px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .cached-pages h2 {
-                  font-size: 1.2em;
-                  color: #333;
-                  margin-bottom: 15px;
-                }
-                .cached-pages a {
-                  display: block;
-                  padding: 10px;
-                  margin: 5px 0;
-                  background: #fef5f9;
-                  color: #e11b70;
-                  text-decoration: none;
-                  border-radius: 6px;
-                  transition: background 0.2s;
-                }
-                .cached-pages a:hover {
-                  background: #fce4f0;
+                  margin-top: 1rem;
                 }
               </style>
             </head>
             <body>
               <div class="container">
-                <div class="icon">📡</div>
                 <h1>You're Offline</h1>
-                <p>No internet connection detected. You can still browse cached pages below.</p>
+                <p>Please check your internet connection</p>
                 <button onclick="window.location.reload()">Try Again</button>
-                
-                <div class="cached-pages">
-                  <h2>Available Offline Pages</h2>
-                  <a href="/">Home</a>
-                  <a href="/menu">Menu</a>
-                  <a href="/order">Order</a>
-                  <a href="/dashboard">Dashboard</a>
-                  <a href="/settings">Settings</a>
-                </div>
               </div>
             </body>
             </html>`,
-            { 
-              headers: { 'Content-Type': 'text/html' }, 
-              status: 503 
-            }
+            { headers: { 'Content-Type': 'text/html' }, status: 503 }
           );
-        }
-      })()
+        })
     );
     return;
   }
 
-  // Static assets: Cache-first with stale-while-revalidate
+  // Static assets - Stale while revalidate
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);
       
-      if (cached) {
-        // Update cache in background if online
-        if (!isOffline()) {
-          fetch(request).then(response => {
-            if (response.ok && url.origin === self.location.origin) {
-              caches.open(RUNTIME_CACHE).then(cache => 
-                cache.put(request, response)
-              ).catch(() => {});
-            }
-          }).catch(() => {});
-        }
-        
-        return cached;
-      }
-
-      // Not in cache - fetch from network
-      try {
-        const response = await fetch(request);
-        
+      const fetchPromise = fetch(request).then(response => {
         if (response.ok && url.origin === self.location.origin) {
-          const responseClone = response.clone();
+          const clone = response.clone();
           caches.open(RUNTIME_CACHE).then(cache => 
-            cache.put(request, responseClone)
+            cache.put(request, clone)
           ).catch(() => {});
         }
-        
         return response;
-      } catch (error) {
-        // Fallback for images
-        if (request.destination === 'image') {
-          return new Response(
-            new Blob([new Uint8Array([71,73,70,56,57,97,1,0,1,0,128,0,0,255,255,255,0,0,0,33,249,4,1,0,0,0,0,44,0,0,0,0,1,0,1,0,0,2,2,68,1,0,59])]),
-            { status: 200, headers: { 'Content-Type': 'image/gif' } }
-          );
-        }
-        
-        return new Response(null, { status: 503 });
-      }
+      }).catch(() => null);
+
+      return cached || fetchPromise || new Response(null, { status: 503 });
     })()
   );
 });
@@ -587,62 +263,6 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-
-  if (event.data?.type === 'GET_CACHED_PAGES') {
-    caches.open(PAGES_CACHE).then(cache => {
-      cache.keys().then(requests => {
-        const urls = requests.map(req => req.url);
-        event.ports[0]?.postMessage({ cachedPages: urls });
-      });
-    });
-  }
-
-  if (event.data?.type === 'CLEAR_CACHE') {
-    caches.keys().then(names => 
-      Promise.all(names.map(name => caches.delete(name)))
-    ).then(() => {
-      event.ports[0]?.postMessage({ success: true });
-    }).catch(() => {
-      event.ports[0]?.postMessage({ success: false });
-    });
-  }
 });
 
-// Background sync
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-orders') {
-    event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => 
-          client.postMessage({ type: 'SYNC_ORDERS', timestamp: Date.now() })
-        );
-      })
-    );
-  }
-});
-
-// Push notifications
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {};
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'AT Restaurant', {
-      body: data.body || 'New notification',
-      icon: '/assets/icons/android-chrome-192x192.png',
-      badge: '/assets/icons/favicon-32x32.png',
-      data: data.data || {}
-    })
-  );
-});
-
-// Notification click
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clients => {
-      const client = clients.find(c => c.url === '/' && 'focus' in c);
-      return client ? client.focus() : self.clients.openWindow('/');
-    })
-  );
-});
-
-console.log('[SW v10] Loaded - Complete offline-first with pre-caching enabled');
+console.log('[User SW v11] Loaded - Scope: / (excluding /admin)');

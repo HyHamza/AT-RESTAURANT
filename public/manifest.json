@@ -1,14 +1,16 @@
 {
   "id": "com.atrestaurant.user",
   "name": "AT Restaurant",
-  "short_name": "Restaurant",
+  "short_name": "AT Restaurant",
   "description": "Fresh Food, Fast Delivery - Order your favorite meals online",
-  "start_url": "/?source=pwa&app=user",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#E91E63",
+  "theme_color": "#e11b70",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/assets/icons/favicon-16x16.png",

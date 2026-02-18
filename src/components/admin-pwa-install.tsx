@@ -26,7 +26,7 @@ export function AdminPWAInstall() {
       }
     }
 
-    // Register admin service worker
+    // Register admin service worker immediately
     registerAdminServiceWorker()
 
     // Check if running in iOS Safari
@@ -39,7 +39,7 @@ export function AdminPWAInstall() {
         if (!hasSeenIOSPrompt) {
           setShowInstallPrompt(true)
         }
-      }, 5000)
+      }, 3000)
     }
 
     // Listen for the beforeinstallprompt event
@@ -52,7 +52,7 @@ export function AdminPWAInstall() {
         if (!hasSeenPrompt) {
           setShowInstallPrompt(true)
         }
-      }, 3000)
+      }, 2000)
     }
 
     // Listen for app installed event
@@ -76,46 +76,68 @@ export function AdminPWAInstall() {
     if ('serviceWorker' in navigator && !isRegistering) {
       setIsRegistering(true)
       try {
-        // Check if admin SW is already registered
+        // Clean up old admin service workers
         const registrations = await navigator.serviceWorker.getRegistrations()
-        const adminSwRegistration = registrations.find(reg => 
+        
+        for (const reg of registrations) {
+          const scriptURL = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL
+          if (scriptURL && scriptURL.includes('/admin/sw.js')) {
+            // Check if it's an old version
+            const cacheNames = await caches.keys()
+            const hasOldCache = cacheNames.some(name => 
+              name.includes('admin-v1') || name.includes('admin-v2')
+            )
+            
+            if (hasOldCache) {
+              console.log('[Admin PWA] Unregistering old admin SW')
+              await reg.unregister()
+              
+              // Delete old caches
+              for (const cacheName of cacheNames) {
+                if (cacheName.includes('admin-v1') || cacheName.includes('admin-v2')) {
+                  console.log('[Admin PWA] Deleting old cache:', cacheName)
+                  await caches.delete(cacheName)
+                }
+              }
+            }
+          }
+        }
+
+        // Check if admin SW is already registered with correct version
+        const currentRegistrations = await navigator.serviceWorker.getRegistrations()
+        const adminSwRegistration = currentRegistrations.find(reg => 
           reg.active?.scriptURL.includes('/admin/sw.js')
         )
 
         if (!adminSwRegistration) {
-          console.log('[Admin PWA] Registering admin service worker with scope /admin/...')
+          console.log('[Admin PWA] Registering admin SW v3 with scope /admin/...')
           
-          // CRITICAL: Register with scope /admin/ (with trailing slash)
           const registration = await navigator.serviceWorker.register('/admin/sw.js', {
             scope: '/admin/',
             updateViaCache: 'none'
           })
           
-          console.log('[Admin PWA] Admin service worker registered successfully')
+          console.log('[Admin PWA] Admin SW registered successfully')
           console.log('[Admin PWA] Scope:', registration.scope)
-          console.log('[Admin PWA] Script URL:', registration.active?.scriptURL || 'installing...')
 
-          // Listen for updates
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing
             if (newWorker) {
-              console.log('[Admin PWA] New admin service worker installing...')
+              console.log('[Admin PWA] New admin SW installing...')
               newWorker.addEventListener('statechange', () => {
-                console.log('[Admin PWA] New worker state:', newWorker.state)
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[Admin PWA] New admin service worker available')
-                  // Auto-activate
+                  console.log('[Admin PWA] New admin SW available')
                   newWorker.postMessage({ type: 'SKIP_WAITING' })
                 }
               })
             }
           })
         } else {
-          console.log('[Admin PWA] Admin service worker already registered')
+          console.log('[Admin PWA] Admin SW already registered')
           console.log('[Admin PWA] Scope:', adminSwRegistration.scope)
         }
       } catch (error) {
-        console.error('[Admin PWA] Service worker registration failed:', error)
+        console.error('[Admin PWA] SW registration failed:', error)
       } finally {
         setIsRegistering(false)
       }

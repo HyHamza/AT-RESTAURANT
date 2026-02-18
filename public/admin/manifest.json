@@ -1,14 +1,16 @@
 {
   "id": "com.atrestaurant.admin",
   "name": "AT Restaurant Admin",
-  "short_name": "Admin",
+  "short_name": "Admin Panel",
   "description": "Manage orders, menu, customers, and restaurant operations",
-  "start_url": "/admin/?source=pwa&app=admin",
+  "start_url": "/admin/?source=pwa",
   "scope": "/admin/",
   "display": "standalone",
-  "background_color": "#1F2937",
-  "theme_color": "#1F2937",
+  "background_color": "#1f2937",
+  "theme_color": "#ea580c",
   "orientation": "any",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/assets/admin-icons/admin-icon-72.png",

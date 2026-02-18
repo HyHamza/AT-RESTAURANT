@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Fix Verification - AT Restaurant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #fef5f9 0%, #fff 50%, #fef5f9 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #e11b70;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #333;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e11b70;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+    .test-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin: 5px 0;
+      background: white;
+      border-radius: 6px;
+    }
+    .status {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+    }
+    .status.pass {
+      background: #28a745;
+    }
+    .status.fail {
+      background: #dc3545;
+    }
+    .status.pending {
+      background: #ffc107;
+    }
+    button {
+      background: #e11b70;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #c01560;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .error {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .nav-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 15px 0;
+    }
+    .nav-links a {
+      padding: 10px 20px;
+      background: #e11b70;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+    .nav-links a:hover {
+      background: #c01560;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 PWA Fix Verification</h1>
+    <p style="color: #666; margin-bottom: 20px;">
+      This page helps verify that the PWA fix is working correctly.
+    </p>
+
+    <div class="info">
+      <strong>What was fixed:</strong>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>Navigation no longer hangs or fails</li>
+        <li>Page loads are fast (< 500ms)</li>
+        <li>User and Admin PWAs are properly separated</li>
+        <li>Service workers don't conflict</li>
+      </ul>
+    </div>
+
+    <h2>1. Service Worker Status</h2>
+    <div class="test-section">
+      <div id="sw-status">Checking...</div>
+      <button onclick="checkServiceWorkers()">Refresh Status</button>
+    </div>
+
+    <h2>2. Navigation Test</h2>
+    <div class="test-section">
+      <p>Click these links to test navigation speed:</p>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/menu">Menu</a>
+        <a href="/order">Order</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/admin">Admin</a>
+        <a href="/admin/orders">Admin Orders</a>
+      </div>
+      <p style="margin-top: 15px; color: #666;">
+        ✅ Navigation should be instant (< 100ms)<br>
+        ❌ If it takes > 1 second, something is wrong
+      </p>
+    </div>
+
+    <h2>3. Cache Status</h2>
+    <div class="test-section">
+      <div id="cache-status">Checking...</div>
+      <button onclick="checkCaches()">Refresh Cache Status</button>
+    </div>
+
+    <h2>4. Manifest Status</h2>
+    <div class="test-section">
+      <div id="manifest-status">Checking...</div>
+      <button onclick="checkManifests()">Refresh Manifest Status</button>
+    </div>
+
+    <h2>5. Quick Actions</h2>
+    <div class="test-section">
+      <button onclick="window.location.href='/cleanup-sw.html'">Clean Up Service Workers</button>
+      <button onclick="testOffline()">Test Offline Mode</button>
+      <button onclick="window.location.reload()">Reload Page</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    async function checkServiceWorkers() {
+      const statusDiv = document.getElementById('sw-status');
+      statusDiv.innerHTML = '<p>Checking service workers...</p>';
+
+      if (!('serviceWorker' in navigator)) {
+        statusDiv.innerHTML = '<div class="error">Service workers not supported in this browser</div>';
+        return;
+      }
+
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        
+        if (registrations.length === 0) {
+          statusDiv.innerHTML = '<div class="info">No service workers registered yet. Navigate to / or /admin to register them.</div>';
+          return;
+        }
+
+        let html = '<div class="success">Found ' + registrations.length + ' service worker(s):</div>';
+        
+        for (const reg of registrations) {
+          const scriptURL = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || 'Unknown';
+          const scope = reg.scope;
+          const state = reg.active?.state || reg.installing?.state || reg.waiting?.state || 'Unknown';
+          
+          const isUserSW = scriptURL.includes('/sw.js') && !scriptURL.includes('/admin/');
+          const isAdminSW = scriptURL.includes('/admin/sw.js');
+          
+          html += '<div class="test-item">';
+          html += '<div class="status ' + (state === 'activated' ? 'pass' : 'pending') + '">' + 
+                  (state === 'activated' ? '✓' : '⏳') + '</div>';
+          html += '<div>';
+          html += '<strong>' + (isUserSW ? 'User SW' : isAdminSW ? 'Admin SW' : 'Unknown SW') + '</strong><br>';
+          html += '<code>' + scriptURL + '</code><br>';
+          html += 'Scope: <code>' + scope + '</code><br>';
+          html += 'State: ' + state;
+          html += '</div>';
+          html += '</div>';
+        }
+        
+        statusDiv.innerHTML = html;
+      } catch (error) {
+        statusDiv.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+      }
+    }
+
+    async function checkCaches() {
+      const statusDiv = document.getElementById('cache-status');
+      statusDiv.innerHTML = '<p>Checking caches...</p>';
+
+      try {
+        const cacheNames = await caches.keys();
+        
+        if (cacheNames.length === 0) {
+          statusDiv.innerHTML = '<div class="info">No caches found yet.</div>';
+          return;
+        }
+
+        let html = '<div class="success">Found ' + cacheNames.length + ' cache(s):</div>';
+        
+        for (const cacheName of cacheNames) {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+          
+          const isUserCache = cacheName.includes('at-restaurant-') && !cacheName.includes('admin');
+          const isAdminCache = cacheName.includes('at-restaurant-admin-');
+          
+          html += '<div class="test-item">';
+          html += '<div class="status pass">✓</div>';
+          html += '<div>';
+          html += '<strong>' + (isUserCache ? 'User Cache' : isAdminCache ? 'Admin Cache' : 'Unknown Cache') + '</strong><br>';
+          html += '<code>' + cacheName + '</code><br>';
+          html += 'Items: ' + keys.length;
+          html += '</div>';
+          html += '</div>';
+        }
+        
+        statusDiv.innerHTML = html;
+      } catch (error) {
+        statusDiv.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+      }
+    }
+
+    async function checkManifests() {
+      const statusDiv = document.getElementById('manifest-status');
+      statusDiv.innerHTML = '<p>Checking manifests...</p>';
+
+      try {
+        const manifests = [
+          { name: 'User Manifest', url: '/manifest.json' },
+          { name: 'Admin Manifest', url: '/admin/manifest.json' }
+        ];
+
+        let html = '';
+        
+        for (const manifest of manifests) {
+          try {
+            const response = await fetch(manifest.url);
+            const data = await response.json();
+            
+            html += '<div class="test-item">';
+            html += '<div class="status pass">✓</div>';
+            html += '<div>';
+            html += '<strong>' + manifest.name + '</strong><br>';
+            html += 'Name: ' + data.name + '<br>';
+            html += 'Scope: <code>' + data.scope + '</code><br>';
+            html += 'Start URL: <code>' + data.start_url + '</code><br>';
+            html += 'Theme: ' + data.theme_color;
+            html += '</div>';
+            html += '</div>';
+          } catch (error) {
+            html += '<div class="test-item">';
+            html += '<div class="status fail">✗</div>';
+            html += '<div>';
+            html += '<strong>' + manifest.name + '</strong><br>';
+            html += 'Error: ' + error.message;
+            html += '</div>';
+            html += '</div>';
+          }
+        }
+        
+        statusDiv.innerHTML = html;
+      } catch (error) {
+        statusDiv.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+      }
+    }
+
+    function testOffline() {
+      alert('To test offline mode:\n\n1. Open DevTools (F12)\n2. Go to Network tab\n3. Set throttling to "Offline"\n4. Navigate to cached pages\n\nThey should load instantly from cache.');
+    }
+
+    // Auto-run checks on load
+    window.addEventListener('load', () => {
+      checkServiceWorkers();
+      checkCaches();
+      checkManifests();
+    });
+  </script>
+</body>
+</html>

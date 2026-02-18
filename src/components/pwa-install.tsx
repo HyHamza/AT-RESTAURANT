@@ -22,32 +22,30 @@ export function PWAInstall() {
       return
     }
 
-    // Check if running in iOS Safari (different install process)
+    // Check if running in iOS Safari
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
     
     if (isIOS && !isInStandaloneMode) {
-      // Show iOS install instructions after delay
       setTimeout(() => {
         const hasSeenIOSPrompt = localStorage.getItem('pwa-ios-install-prompt-seen')
         if (!hasSeenIOSPrompt) {
           setShowInstallPrompt(true)
         }
-      }, 15000) // Show after 15 seconds for iOS
+      }, 10000)
     }
 
-    // Listen for the beforeinstallprompt event (Android/Chrome)
+    // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
-      // Show install prompt after a delay (don't be too aggressive)
       setTimeout(() => {
         const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen')
         if (!hasSeenPrompt) {
           setShowInstallPrompt(true)
         }
-      }, 10000) // Show after 10 seconds
+      }, 8000)
     }
 
     // Listen for app installed event
