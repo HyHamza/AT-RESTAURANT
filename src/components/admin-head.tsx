@@ -6,7 +6,7 @@ export function AdminHead() {
   useEffect(() => {
     console.log('[AdminHead] Configuring admin PWA metadata...');
 
-    // Update manifest link to admin manifest
+    // CRITICAL: Replace manifest link with admin manifest
     let manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
     if (manifestLink) {
       manifestLink.setAttribute('href', '/admin/manifest.json');
@@ -22,11 +22,11 @@ export function AdminHead() {
     // Update theme color to admin theme
     let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
     if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', '#1F2937');
+      themeColorMeta.setAttribute('content', '#ea580c');
     } else {
       themeColorMeta = document.createElement('meta');
       themeColorMeta.name = 'theme-color';
-      themeColorMeta.content = '#1F2937';
+      themeColorMeta.content = '#ea580c';
       document.head.appendChild(themeColorMeta);
     }
 
@@ -35,29 +35,28 @@ export function AdminHead() {
     appleTouchIcons.forEach(icon => {
       const href = icon.getAttribute('href');
       if (href && !href.includes('admin-icons')) {
-        const newHref = href.replace('/assets/icons/', '/assets/admin-icons/admin-');
-        icon.setAttribute('href', newHref);
+        icon.setAttribute('href', '/assets/admin-icons/admin-icon-180.png');
       }
     });
 
     // Update app title metadata
     let appNameMeta = document.querySelector('meta[name="application-name"]') as HTMLMetaElement;
     if (appNameMeta) {
-      appNameMeta.setAttribute('content', 'Admin Panel');
+      appNameMeta.setAttribute('content', 'AT Restaurant Admin');
     } else {
       appNameMeta = document.createElement('meta');
       appNameMeta.name = 'application-name';
-      appNameMeta.content = 'Admin Panel';
+      appNameMeta.content = 'AT Restaurant Admin';
       document.head.appendChild(appNameMeta);
     }
 
     let appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
     if (appleTitleMeta) {
-      appleTitleMeta.setAttribute('content', 'Admin');
+      appleTitleMeta.setAttribute('content', 'Admin Panel');
     } else {
       appleTitleMeta = document.createElement('meta');
       appleTitleMeta.name = 'apple-mobile-web-app-title';
-      appleTitleMeta.content = 'Admin';
+      appleTitleMeta.content = 'Admin Panel';
       document.head.appendChild(appleTitleMeta);
     }
 
@@ -87,6 +86,11 @@ export function AdminHead() {
       if (themeColorMeta) {
         themeColorMeta.setAttribute('content', '#e11b70');
       }
+
+      const appleTouchIcons = document.querySelectorAll('link[rel="apple-touch-icon"]');
+      appleTouchIcons.forEach(icon => {
+        icon.setAttribute('href', '/assets/icons/apple-touch-icon.png');
+      });
     };
   }, []);
 

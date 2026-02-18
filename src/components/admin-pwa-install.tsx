@@ -10,11 +10,127 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+declare global {
+  interface Window {
+    __ADMIN_SW_REGISTERED__?: boolean
+    __ADMIN_SW_REGISTERING__?: boolean
+  }
+}
+
+// Clean up old admin service workers
+async function cleanupOldAdminServiceWorkers(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    
+    for (const registration of registrations) {
+      const scriptURL = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL;
+      
+      if (scriptURL && scriptURL.includes('/admin/sw.js')) {
+        // Check if it's an old version
+        const cacheNames = await caches.keys();
+        const hasOldCache = cacheNames.some(name => 
+          name.includes('admin-v1') || name.includes('admin-v2') || name.includes('admin-v3')
+        );
+        
+        if (hasOldCache) {
+          console.log('[Admin SW Cleanup] Unregistering old admin SW');
+          await registration.unregister();
+          
+          // Delete old caches
+          for (const cacheName of cacheNames) {
+            if (cacheName.includes('admin-v1') || cacheName.includes('admin-v2') || cacheName.includes('admin-v3')) {
+              console.log('[Admin SW Cleanup] Deleting old cache:', cacheName);
+              await caches.delete(cacheName);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[Admin SW Cleanup] Error during cleanup:', error);
+  }
+}
+
+async function registerAdminServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return null;
+  }
+
+  // CRITICAL: ONLY register admin SW on admin routes
+  if (!window.location.pathname.startsWith('/admin')) {
+    console.log('[Admin SW] Skipping registration - not on admin route');
+    return null;
+  }
+
+  if (window.__ADMIN_SW_REGISTERED__ || window.__ADMIN_SW_REGISTERING__) {
+    console.log('[Admin SW] Already registered or registering');
+    return navigator.serviceWorker.ready.catch(() => null);
+  }
+
+  window.__ADMIN_SW_REGISTERING__ = true;
+
+  try {
+    // Clean up old admin service workers first
+    await cleanupOldAdminServiceWorkers();
+
+    // Check if already controlled by correct SW
+    if (navigator.serviceWorker.controller) {
+      const controllerUrl = navigator.serviceWorker.controller.scriptURL;
+      console.log('[Admin SW] Already controlled by:', controllerUrl);
+      
+      if (controllerUrl.includes('/admin/sw.js')) {
+        window.__ADMIN_SW_REGISTERED__ = true;
+        window.__ADMIN_SW_REGISTERING__ = false;
+        return navigator.serviceWorker.ready;
+      }
+    }
+
+    console.log('[Admin SW] Registering v4 with scope /admin/...');
+    const registration = await navigator.serviceWorker.register('/admin/sw.js', {
+      scope: '/admin/',
+      updateViaCache: 'none'
+    });
+
+    console.log('[Admin SW] Registration successful, scope:', registration.scope);
+    
+    window.__ADMIN_SW_REGISTERED__ = true;
+    window.__ADMIN_SW_REGISTERING__ = false;
+
+    // Handle updates
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+
+      console.log('[Admin SW] Update found');
+      
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          console.log('[Admin SW] New version available, activating...');
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+
+    // Handle controller change (new SW activated)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('[Admin SW] Controller changed, reloading page...');
+      window.location.reload();
+    });
+
+    return registration;
+  } catch (error) {
+    console.warn('[Admin SW] Registration failed:', error);
+    window.__ADMIN_SW_REGISTERING__ = false;
+    return null;
+  }
+}
+
 export function AdminPWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [isRegistering, setIsRegistering] = useState(false)
 
   useEffect(() => {
     // Check if admin app is already installed
@@ -27,7 +143,9 @@ export function AdminPWAInstall() {
     }
 
     // Register admin service worker immediately
-    registerAdminServiceWorker()
+    registerAdminServiceWorker().catch(err => {
+      console.warn('[Admin PWA] SW registration error:', err);
+    });
 
     // Check if running in iOS Safari
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -71,78 +189,6 @@ export function AdminPWAInstall() {
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [])
-
-  const registerAdminServiceWorker = async () => {
-    if ('serviceWorker' in navigator && !isRegistering) {
-      setIsRegistering(true)
-      try {
-        // Clean up old admin service workers
-        const registrations = await navigator.serviceWorker.getRegistrations()
-        
-        for (const reg of registrations) {
-          const scriptURL = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL
-          if (scriptURL && scriptURL.includes('/admin/sw.js')) {
-            // Check if it's an old version
-            const cacheNames = await caches.keys()
-            const hasOldCache = cacheNames.some(name => 
-              name.includes('admin-v1') || name.includes('admin-v2')
-            )
-            
-            if (hasOldCache) {
-              console.log('[Admin PWA] Unregistering old admin SW')
-              await reg.unregister()
-              
-              // Delete old caches
-              for (const cacheName of cacheNames) {
-                if (cacheName.includes('admin-v1') || cacheName.includes('admin-v2')) {
-                  console.log('[Admin PWA] Deleting old cache:', cacheName)
-                  await caches.delete(cacheName)
-                }
-              }
-            }
-          }
-        }
-
-        // Check if admin SW is already registered with correct version
-        const currentRegistrations = await navigator.serviceWorker.getRegistrations()
-        const adminSwRegistration = currentRegistrations.find(reg => 
-          reg.active?.scriptURL.includes('/admin/sw.js')
-        )
-
-        if (!adminSwRegistration) {
-          console.log('[Admin PWA] Registering admin SW v3 with scope /admin/...')
-          
-          const registration = await navigator.serviceWorker.register('/admin/sw.js', {
-            scope: '/admin/',
-            updateViaCache: 'none'
-          })
-          
-          console.log('[Admin PWA] Admin SW registered successfully')
-          console.log('[Admin PWA] Scope:', registration.scope)
-
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            if (newWorker) {
-              console.log('[Admin PWA] New admin SW installing...')
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[Admin PWA] New admin SW available')
-                  newWorker.postMessage({ type: 'SKIP_WAITING' })
-                }
-              })
-            }
-          })
-        } else {
-          console.log('[Admin PWA] Admin SW already registered')
-          console.log('[Admin PWA] Scope:', adminSwRegistration.scope)
-        }
-      } catch (error) {
-        console.error('[Admin PWA] SW registration failed:', error)
-      } finally {
-        setIsRegistering(false)
-      }
-    }
-  }
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return

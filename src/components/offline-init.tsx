@@ -7,12 +7,12 @@ import { supabase } from '@/lib/supabase'
 
 declare global {
   interface Window {
-    __SW_REGISTERED__?: boolean
-    __SW_REGISTERING__?: boolean
+    __USER_SW_REGISTERED__?: boolean
+    __USER_SW_REGISTERING__?: boolean
   }
 }
 
-// Clean up old broken service workers before registering new one
+// Clean up ALL old service workers before registering new one
 async function cleanupOldServiceWorkers(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
 
@@ -22,32 +22,31 @@ async function cleanupOldServiceWorkers(): Promise<void> {
     for (const registration of registrations) {
       const scriptURL = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL;
       
-      // Unregister old versions (v1-v10 for user, v1-v2 for admin)
       if (scriptURL) {
-        const isOldUserSW = scriptURL.includes('/sw.js') && !scriptURL.includes('/admin/');
-        const isOldAdminSW = scriptURL.includes('/admin/sw.js');
+        const isUserSW = scriptURL.includes('/sw.js') && !scriptURL.includes('/admin/');
         
-        // Check if it's an old version by checking cache names
-        if (isOldUserSW || isOldAdminSW) {
+        if (isUserSW) {
+          // Check if it's an old version by checking cache names
           const cacheNames = await caches.keys();
           const hasOldCache = cacheNames.some(name => 
-            name.includes('-v1') || name.includes('-v2') || name.includes('-v3') || 
-            name.includes('-v4') || name.includes('-v5') || name.includes('-v6') ||
-            name.includes('-v7') || name.includes('-v8') || name.includes('-v9') || name.includes('-v10')
+            name.includes('at-restaurant-') && 
+            !name.includes('admin') &&
+            (name.includes('-v1') || name.includes('-v2') || name.includes('-v3') || 
+             name.includes('-v4') || name.includes('-v5') || name.includes('-v6') ||
+             name.includes('-v7') || name.includes('-v8') || name.includes('-v9') || 
+             name.includes('-v10') || name.includes('-v11'))
           );
           
           if (hasOldCache) {
-            console.log('[SW Cleanup] Unregistering old SW:', scriptURL);
+            console.log('[User SW Cleanup] Unregistering old SW:', scriptURL);
             await registration.unregister();
             
             // Delete old caches
             for (const cacheName of cacheNames) {
-              if (cacheName.includes('-v1') || cacheName.includes('-v2') || 
-                  cacheName.includes('-v3') || cacheName.includes('-v4') || 
-                  cacheName.includes('-v5') || cacheName.includes('-v6') ||
-                  cacheName.includes('-v7') || cacheName.includes('-v8') || 
-                  cacheName.includes('-v9') || cacheName.includes('-v10')) {
-                console.log('[SW Cleanup] Deleting old cache:', cacheName);
+              if (cacheName.includes('at-restaurant-') && 
+                  !cacheName.includes('admin') &&
+                  !cacheName.includes('-v12')) {
+                console.log('[User SW Cleanup] Deleting old cache:', cacheName);
                 await caches.delete(cacheName);
               }
             }
@@ -56,27 +55,27 @@ async function cleanupOldServiceWorkers(): Promise<void> {
       }
     }
   } catch (error) {
-    console.warn('[SW Cleanup] Error during cleanup:', error);
+    console.warn('[User SW Cleanup] Error during cleanup:', error);
   }
 }
 
-async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+async function registerUserServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
   }
 
-  // NEVER register user SW on admin routes
+  // CRITICAL: NEVER register user SW on admin routes
   if (window.location.pathname.startsWith('/admin')) {
-    console.log('[User SW] Skipping registration on admin route');
+    console.log('[User SW] Skipping registration - on admin route');
     return null;
   }
 
-  if (window.__SW_REGISTERED__ || window.__SW_REGISTERING__) {
+  if (window.__USER_SW_REGISTERED__ || window.__USER_SW_REGISTERING__) {
     console.log('[User SW] Already registered or registering');
     return navigator.serviceWorker.ready.catch(() => null);
   }
 
-  window.__SW_REGISTERING__ = true;
+  window.__USER_SW_REGISTERING__ = true;
 
   try {
     // Clean up old service workers first
@@ -88,24 +87,24 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
       console.log('[User SW] Already controlled by:', controllerUrl);
       
       if (controllerUrl.includes('/sw.js') && !controllerUrl.includes('/admin/')) {
-        window.__SW_REGISTERED__ = true;
-        window.__SW_REGISTERING__ = false;
+        window.__USER_SW_REGISTERED__ = true;
+        window.__USER_SW_REGISTERING__ = false;
         return navigator.serviceWorker.ready;
       }
     }
 
-    console.log('[User SW] Registering v11 with scope /...');
+    console.log('[User SW] Registering v12 with scope /...');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'
     });
 
-    console.log('[User SW] Registration successful');
-    console.log('[User SW] Scope:', registration.scope);
+    console.log('[User SW] Registration successful, scope:', registration.scope);
     
-    window.__SW_REGISTERED__ = true;
-    window.__SW_REGISTERING__ = false;
+    window.__USER_SW_REGISTERED__ = true;
+    window.__USER_SW_REGISTERING__ = false;
 
+    // Handle updates
     registration.addEventListener('updatefound', () => {
       const newWorker = registration.installing;
       if (!newWorker) return;
@@ -114,16 +113,22 @@ async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null
       
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('[User SW] New version available');
+          console.log('[User SW] New version available, activating...');
           newWorker.postMessage({ type: 'SKIP_WAITING' });
         }
       });
     });
 
+    // Handle controller change (new SW activated)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('[User SW] Controller changed, reloading page...');
+      window.location.reload();
+    });
+
     return registration;
   } catch (error) {
     console.warn('[User SW] Registration failed:', error);
-    window.__SW_REGISTERING__ = false;
+    window.__USER_SW_REGISTERING__ = false;
     return null;
   }
 }
@@ -156,7 +161,7 @@ async function preCacheMenuData() {
       })
     }
   } catch (error) {
-    console.warn('[SW] Pre-cache failed:', error)
+    console.warn('[User SW] Pre-cache failed:', error)
   }
 }
 
@@ -170,17 +175,20 @@ export function OfflineInit() {
     const init = () => {
       console.log('[Offline Init] Starting initialization...');
       
+      // Start sync service
       syncService.startAutoSync();
 
+      // Clean expired assets
       assetCache.cleanExpiredAssets().catch(err => {
         console.warn('[Offline Init] Asset cleanup failed:', err);
       });
 
       // Register SW immediately (non-blocking)
-      registerServiceWorker()
+      registerUserServiceWorker()
         .then(registration => {
           if (registration) {
-            console.log('[Offline Init] SW registered');
+            console.log('[Offline Init] User SW registered successfully');
+            // Pre-cache menu data after 5 seconds
             setTimeout(() => {
               preCacheMenuData().catch(err => {
                 console.warn('[Offline Init] Menu pre-cache failed:', err);
@@ -195,7 +203,7 @@ export function OfflineInit() {
       console.log('[Offline Init] Complete');
     };
 
-    // Start immediately - no artificial delays
+    // Start immediately
     setTimeout(init, 100);
 
     return () => {

@@ -185,7 +185,7 @@ export function useOffline(): OfflineState & OfflineActions {
   }
 }
 
-// Hook for service worker registration and management
+// Hook for service worker management (registration handled by OfflineInit component)
 export function useServiceWorker() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null)
   const [updateAvailable, setUpdateAvailable] = useState(false)
@@ -196,12 +196,10 @@ export function useServiceWorker() {
       return
     }
 
-    const registerSW = async () => {
+    // Get existing registration (registered by OfflineInit)
+    const getRegistration = async () => {
       try {
-        const reg = await navigator.serviceWorker.register('/sw.js', {
-          scope: '/'
-        })
-
+        const reg = await navigator.serviceWorker.ready
         setRegistration(reg)
 
         // Check for updates
@@ -226,11 +224,11 @@ export function useServiceWorker() {
         })
 
       } catch (error) {
-        console.error('Service worker registration failed:', error)
+        console.error('Service worker not available:', error)
       }
     }
 
-    registerSW()
+    getRegistration()
   }, [])
 
   const updateServiceWorker = useCallback(() => {
