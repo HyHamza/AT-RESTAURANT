@@ -133,13 +133,22 @@ export function AdminPWAInstall() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Check if admin app is already installed
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-      const currentUrl = window.location.href
-      if (currentUrl.includes('/admin')) {
-        setIsInstalled(true)
-        return
-      }
+    // CRITICAL: Check if app is already running in standalone mode
+    const isStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    
+    if (isStandalone) {
+      setIsInstalled(true);
+      console.log('[Admin PWA] Already running in standalone mode - suppressing install prompt');
+      return;
+    }
+
+    // Check if admin app is already installed via localStorage
+    const adminInstalled = localStorage.getItem('admin-pwa-installed') === 'true';
+    if (adminInstalled) {
+      setIsInstalled(true);
+      return;
     }
 
     // Register admin service worker immediately
@@ -163,7 +172,25 @@ export function AdminPWAInstall() {
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
+      
+      // CRITICAL: Double-check standalone mode even if event fires
+      const isStandalone = 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      
+      if (isStandalone) {
+        console.log('[Admin PWA] Standalone mode detected - ignoring beforeinstallprompt');
+        return;
+      }
+      
       setDeferredPrompt(e as BeforeInstallPromptEvent)
+      
+      // Check if user has dismissed before
+      const hasSeenPrompt = localStorage.getItem('admin-pwa-install-prompt-dismissed');
+      if (hasSeenPrompt) {
+        console.log('[Admin PWA] User previously dismissed - not showing prompt');
+        return;
+      }
       
       setTimeout(() => {
         const hasSeenPrompt = localStorage.getItem('admin-pwa-install-prompt-seen')
@@ -219,6 +246,8 @@ export function AdminPWAInstall() {
       isIOS ? 'admin-pwa-ios-install-prompt-seen' : 'admin-pwa-install-prompt-seen', 
       'true'
     )
+    // Mark as dismissed so we don't show again
+    localStorage.setItem('admin-pwa-install-prompt-dismissed', 'true')
   }
 
   if (isInstalled || !showInstallPrompt) {

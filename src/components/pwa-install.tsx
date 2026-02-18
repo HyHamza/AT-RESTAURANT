@@ -16,10 +16,22 @@ export function PWAInstall() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Check if app is already installed
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-      return
+    // CRITICAL: Check if app is already running in standalone mode
+    const isStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    
+    if (isStandalone) {
+      setIsInstalled(true);
+      console.log('[PWA Install] Already running in standalone mode - suppressing install prompt');
+      return;
+    }
+
+    // Check if user app is already installed via localStorage
+    const userInstalled = localStorage.getItem('pwa-installed') === 'true';
+    if (userInstalled) {
+      setIsInstalled(true);
+      return;
     }
 
     // Check if running in iOS Safari
@@ -38,7 +50,25 @@ export function PWAInstall() {
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
+      
+      // CRITICAL: Double-check standalone mode even if event fires
+      const isStandalone = 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      
+      if (isStandalone) {
+        console.log('[PWA Install] Standalone mode detected - ignoring beforeinstallprompt');
+        return;
+      }
+      
       setDeferredPrompt(e as BeforeInstallPromptEvent)
+      
+      // Check if user has dismissed before
+      const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-dismissed');
+      if (hasSeenPrompt) {
+        console.log('[PWA Install] User previously dismissed - not showing prompt');
+        return;
+      }
       
       setTimeout(() => {
         const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen')
@@ -89,6 +119,8 @@ export function PWAInstall() {
     setShowInstallPrompt(false)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     localStorage.setItem(isIOS ? 'pwa-ios-install-prompt-seen' : 'pwa-install-prompt-seen', 'true')
+    // Mark as dismissed so we don't show again
+    localStorage.setItem('pwa-install-prompt-dismissed', 'true')
   }
 
   if (isInstalled || !showInstallPrompt) {
