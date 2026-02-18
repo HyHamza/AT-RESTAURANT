@@ -34,7 +34,8 @@ async function cleanupOldServiceWorkers(): Promise<void> {
             (name.includes('-v1') || name.includes('-v2') || name.includes('-v3') || 
              name.includes('-v4') || name.includes('-v5') || name.includes('-v6') ||
              name.includes('-v7') || name.includes('-v8') || name.includes('-v9') || 
-             name.includes('-v10') || name.includes('-v11') || name.includes('-v12'))
+             name.includes('-v10') || name.includes('-v11') || name.includes('-v12') ||
+             name.includes('-v13'))
           );
           
           if (hasOldCache) {
@@ -45,7 +46,7 @@ async function cleanupOldServiceWorkers(): Promise<void> {
             for (const cacheName of cacheNames) {
               if (cacheName.includes('at-restaurant-') && 
                   !cacheName.includes('admin') &&
-                  !cacheName.includes('-v13')) {
+                  !cacheName.includes('-v14')) {
                 console.log('[User SW Cleanup] Deleting old cache:', cacheName);
                 await caches.delete(cacheName);
               }
@@ -93,7 +94,7 @@ async function registerUserServiceWorker(): Promise<ServiceWorkerRegistration | 
       }
     }
 
-    console.log('[User SW] Registering v13 with scope /...');
+    console.log('[User SW] Registering v14 with scope /...');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'

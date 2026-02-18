@@ -1,18 +1,18 @@
-// AT Restaurant - User Service Worker v13 - Non-blocking, Cache-safe
-const CACHE_VERSION = 'user-v13';
+// AT Restaurant - User Service Worker v14 - Fast Navigation
+const CACHE_VERSION = 'user-v14';
 const STATIC_CACHE = `at-restaurant-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `at-restaurant-images-${CACHE_VERSION}`;
 
 const OFFLINE_FALLBACK = '/offline';
-const CACHE_TIMEOUT = 2000; // 2 second timeout for cache operations
+const CACHE_TIMEOUT = 1000; // 1 second timeout for cache operations
 
 // Minimal precache - only offline page
 const PRECACHE_URLS = [OFFLINE_FALLBACK];
 
 // Install - Non-blocking, immediate activation
 self.addEventListener('install', (event) => {
-  console.log('[User SW v13] Installing...');
+  console.log('[User SW v14] Installing...');
   
   // Skip waiting immediately - never block
   self.skipWaiting();
@@ -26,21 +26,20 @@ self.addEventListener('install', (event) => {
           new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
         ]);
         
-        // Try to cache offline page, but don't fail if it doesn't work
         await Promise.allSettled(
           PRECACHE_URLS.map(url => 
             Promise.race([
               cache.add(url),
               new Promise((_, reject) => setTimeout(() => reject(new Error('Cache add timeout')), CACHE_TIMEOUT))
             ]).catch(err => {
-              console.warn('[User SW v13] Failed to precache:', url, err.message);
+              console.warn('[User SW v14] Failed to precache:', url, err.message);
             })
           )
         );
         
-        console.log('[User SW v13] Precache complete (non-blocking)');
+        console.log('[User SW v14] Precache complete (non-blocking)');
       } catch (error) {
-        console.warn('[User SW v13] Precache error (non-critical):', error.message);
+        console.warn('[User SW v14] Precache error (non-critical):', error.message);
       }
     })()
   );
@@ -48,7 +47,7 @@ self.addEventListener('install', (event) => {
 
 // Activate - Clean old caches and validate integrity
 self.addEventListener('activate', (event) => {
-  console.log('[User SW v13] Activating...');
+  console.log('[User SW v14] Activating...');
   
   // Claim clients immediately
   self.clients.claim();
@@ -68,7 +67,7 @@ self.addEventListener('activate', (event) => {
               !validCaches.includes(name)
             )
             .map(name => {
-              console.log('[User SW v13] Deleting old cache:', name);
+              console.log('[User SW v14] Deleting old cache:', name);
               return caches.delete(name).catch(() => {});
             })
         );
@@ -85,23 +84,23 @@ self.addEventListener('activate', (event) => {
                 
                 // Validate response
                 if (!response || !response.ok || response.status < 200 || response.status >= 300) {
-                  console.log('[User SW v13] Deleting corrupted cache entry:', request.url);
+                  console.log('[User SW v14] Deleting corrupted cache entry:', request.url);
                   await cache.delete(request);
                 }
               } catch (error) {
                 // If reading fails, delete the entry
-                console.log('[User SW v13] Deleting unreadable cache entry:', request.url);
+                console.log('[User SW v14] Deleting unreadable cache entry:', request.url);
                 await cache.delete(request).catch(() => {});
               }
             }
           } catch (error) {
-            console.warn('[User SW v13] Cache integrity check failed for:', cacheName);
+            console.warn('[User SW v14] Cache integrity check failed for:', cacheName);
           }
         }
         
-        console.log('[User SW v13] Activated and cache validated');
+        console.log('[User SW v14] Activated and cache validated');
       } catch (error) {
-        console.warn('[User SW v13] Activation error:', error);
+        console.warn('[User SW v14] Activation error:', error);
       }
     })()
   );
@@ -132,30 +131,27 @@ async function safeCacheMatch(request, cacheName) {
     
     return null;
   } catch (error) {
-    console.warn('[User SW v13] Cache match error:', error.message);
     return null;
   }
 }
 
-// Safe cache put with timeout
-async function safeCachePut(cacheName, request, response) {
-  try {
-    const cache = await Promise.race([
-      caches.open(cacheName),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
-    ]);
-    
-    await Promise.race([
+// Safe cache put with timeout - non-blocking
+function safeCachePut(cacheName, request, response) {
+  // Fire and forget - never wait for cache writes
+  Promise.race([
+    caches.open(cacheName),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Cache open timeout')), CACHE_TIMEOUT))
+  ]).then(cache => {
+    return Promise.race([
       cache.put(request, response),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Cache put timeout')), CACHE_TIMEOUT))
     ]);
-  } catch (error) {
-    // Silently fail - never block on cache writes
-    console.warn('[User SW v13] Cache put failed (non-critical):', error.message);
-  }
+  }).catch(() => {
+    // Silently fail - never block
+  });
 }
 
-// Fetch - Optimized for navigation performance
+// Fetch - Optimized for fast navigation
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -183,29 +179,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NAVIGATION - NetworkFirst with 3s timeout
+  // NAVIGATION - Network ONLY, no cache delays
+  // CRITICAL: Direct navigation (typing URL, clicking link) must be instant
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          // Network first with timeout
-          const networkPromise = fetch(request);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Network timeout')), 3000)
-          );
+          // Pure network fetch - no cache lookups that cause delays
+          const response = await fetch(request);
           
-          const response = await Promise.race([networkPromise, timeoutPromise]);
-          
-          // Cache successful navigation responses (non-blocking)
+          // Cache in background (fire and forget - non-blocking)
           if (response.ok) {
             safeCachePut(RUNTIME_CACHE, request, response.clone());
           }
           
           return response;
         } catch (error) {
-          console.log('[User SW v13] Navigation offline, serving fallback');
-          
-          // Try cached version
+          // Only on network failure, try cache
           const cached = await safeCacheMatch(request, RUNTIME_CACHE);
           if (cached) return cached;
           
@@ -279,7 +269,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /_next/static/ - CacheFirst with 365 day expiration
+  // /_next/static/ - CacheFirst (these are immutable versioned assets)
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       (async () => {
@@ -321,53 +311,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /api/ routes - NetworkFirst with 10s timeout
+  // /api/ routes - Network only (no caching for API calls)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      (async () => {
-        try {
-          const networkPromise = fetch(request);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('API timeout')), 10000)
-          );
-          
-          const response = await Promise.race([networkPromise, timeoutPromise]);
-          
-          if (response.ok) {
-            safeCachePut(RUNTIME_CACHE, request, response.clone());
+      fetch(request).catch(() => 
+        new Response(
+          JSON.stringify({ error: 'Offline', offline: true }),
+          { 
+            headers: { 'Content-Type': 'application/json' }, 
+            status: 503 
           }
-          
-          return response;
-        } catch (error) {
-          const cached = await safeCacheMatch(request, RUNTIME_CACHE);
-          if (cached) return cached;
-          
-          return new Response(
-            JSON.stringify({ error: 'Offline', offline: true }),
-            { 
-              headers: { 'Content-Type': 'application/json' }, 
-              status: 503 
-            }
-          );
-        }
-      })()
+        )
+      )
     );
     return;
   }
 
-  // All other requests - StaleWhileRevalidate
+  // All other requests - Network first, fast fallback
   event.respondWith(
     (async () => {
-      const cached = await safeCacheMatch(request, RUNTIME_CACHE);
-      
-      const fetchPromise = fetch(request).then(response => {
+      try {
+        const response = await fetch(request);
         if (response.ok) {
           safeCachePut(RUNTIME_CACHE, request, response.clone());
         }
         return response;
-      }).catch(() => null);
-
-      return cached || fetchPromise || new Response(null, { status: 503 });
+      } catch (error) {
+        const cached = await safeCacheMatch(request, RUNTIME_CACHE);
+        return cached || new Response(null, { status: 503 });
+      }
     })()
   );
 });
@@ -379,4 +351,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[User SW v13] Loaded - Non-blocking, cache-safe');
+console.log('[User SW v14] Loaded - Fast navigation, no blocking cache');
