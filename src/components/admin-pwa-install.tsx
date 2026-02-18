@@ -87,7 +87,7 @@ async function registerAdminServiceWorker(): Promise<ServiceWorkerRegistration |
       }
     }
 
-    console.log('[Admin SW] Registering v4 with scope /admin/...');
+    console.log('[Admin SW] Registering v6 with scope /admin/...');
     const registration = await navigator.serviceWorker.register('/admin/sw.js', {
       scope: '/admin/',
       updateViaCache: 'none'
@@ -133,14 +133,21 @@ export function AdminPWAInstall() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // CRITICAL: Check if app is already running in standalone mode
+    // CRITICAL: Scope-aware standalone check
+    // Only suppress if ADMIN PWA specifically is running in standalone mode
     const isStandalone = 
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
     
-    if (isStandalone) {
+    const isAdminRoute = window.location.pathname.startsWith('/admin');
+    
+    // Only suppress install prompt if we're in standalone mode AND on admin route
+    // This means the admin PWA specifically is installed and running
+    const isAdminStandalone = isStandalone && isAdminRoute;
+    
+    if (isAdminStandalone) {
       setIsInstalled(true);
-      console.log('[Admin PWA] Already running in standalone mode - suppressing install prompt');
+      console.log('[Admin PWA] Admin app running in standalone mode - suppressing install prompt');
       return;
     }
 
@@ -173,13 +180,17 @@ export function AdminPWAInstall() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       
-      // CRITICAL: Double-check standalone mode even if event fires
+      // CRITICAL: Scope-aware standalone check
       const isStandalone = 
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as any).standalone === true;
       
-      if (isStandalone) {
-        console.log('[Admin PWA] Standalone mode detected - ignoring beforeinstallprompt');
+      const isAdminRoute = window.location.pathname.startsWith('/admin');
+      const isAdminStandalone = isStandalone && isAdminRoute;
+      
+      // Only suppress if admin PWA specifically is in standalone mode
+      if (isAdminStandalone) {
+        console.log('[Admin PWA] Admin app in standalone mode - ignoring beforeinstallprompt');
         return;
       }
       

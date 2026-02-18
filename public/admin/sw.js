@@ -1,5 +1,5 @@
-// AT Restaurant - Admin Service Worker v5 - Non-blocking, Cache-safe
-const CACHE_VERSION = 'admin-v5';
+// AT Restaurant - Admin Service Worker v6 - Auth-aware, Non-blocking, Cache-safe
+const CACHE_VERSION = 'admin-v6';
 const STATIC_CACHE = `at-restaurant-admin-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `at-restaurant-admin-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `at-restaurant-admin-images-${CACHE_VERSION}`;
@@ -7,12 +7,22 @@ const IMAGE_CACHE = `at-restaurant-admin-images-${CACHE_VERSION}`;
 const OFFLINE_FALLBACK = '/admin/';
 const CACHE_TIMEOUT = 2000; // 2 second timeout for cache operations
 
-// Minimal precache - only offline page
+// CRITICAL: Routes that must NEVER be cached - always go to network
+const NEVER_CACHE_PATTERNS = [
+  '/admin/login',
+  '/admin/logout',
+  '/api/auth',
+  '/api/login',
+  '/api/session',
+  '?redirect='
+];
+
+// Minimal precache - only manifest
 const PRECACHE_URLS = ['/admin/manifest.json'];
 
 // Install - Non-blocking, immediate activation
 self.addEventListener('install', (event) => {
-  console.log('[Admin SW v5] Installing...');
+  console.log('[Admin SW v6] Installing...');
   
   // Skip waiting immediately - never block
   self.skipWaiting();
@@ -33,14 +43,14 @@ self.addEventListener('install', (event) => {
               cache.add(url),
               new Promise((_, reject) => setTimeout(() => reject(new Error('Cache add timeout')), CACHE_TIMEOUT))
             ]).catch(err => {
-              console.warn('[Admin SW v5] Failed to precache:', url, err.message);
+              console.warn('[Admin SW v6] Failed to precache:', url, err.message);
             })
           )
         );
         
-        console.log('[Admin SW v5] Precache complete (non-blocking)');
+        console.log('[Admin SW v6] Precache complete (non-blocking)');
       } catch (error) {
-        console.warn('[Admin SW v5] Precache error (non-critical):', error.message);
+        console.warn('[Admin SW v6] Precache error (non-critical):', error.message);
       }
     })()
   );
@@ -48,7 +58,7 @@ self.addEventListener('install', (event) => {
 
 // Activate - Clean old caches and validate integrity
 self.addEventListener('activate', (event) => {
-  console.log('[Admin SW v5] Activating...');
+  console.log('[Admin SW v6] Activating...');
   
   // Claim clients immediately
   self.clients.claim();
@@ -67,7 +77,7 @@ self.addEventListener('activate', (event) => {
               !validCaches.includes(name)
             )
             .map(name => {
-              console.log('[Admin SW v5] Deleting old cache:', name);
+              console.log('[Admin SW v6] Deleting old cache:', name);
               return caches.delete(name).catch(() => {});
             })
         );
@@ -84,23 +94,23 @@ self.addEventListener('activate', (event) => {
                 
                 // Validate response
                 if (!response || !response.ok || response.status < 200 || response.status >= 300) {
-                  console.log('[Admin SW v5] Deleting corrupted cache entry:', request.url);
+                  console.log('[Admin SW v6] Deleting corrupted cache entry:', request.url);
                   await cache.delete(request);
                 }
               } catch (error) {
                 // If reading fails, delete the entry
-                console.log('[Admin SW v5] Deleting unreadable cache entry:', request.url);
+                console.log('[Admin SW v6] Deleting unreadable cache entry:', request.url);
                 await cache.delete(request).catch(() => {});
               }
             }
           } catch (error) {
-            console.warn('[Admin SW v5] Cache integrity check failed for:', cacheName);
+            console.warn('[Admin SW v6] Cache integrity check failed for:', cacheName);
           }
         }
         
-        console.log('[Admin SW v5] Activated and cache validated');
+        console.log('[Admin SW v6] Activated and cache validated');
       } catch (error) {
-        console.warn('[Admin SW v5] Activation error:', error);
+        console.warn('[Admin SW v6] Activation error:', error);
       }
     })()
   );
@@ -131,7 +141,7 @@ async function safeCacheMatch(request, cacheName) {
     
     return null;
   } catch (error) {
-    console.warn('[Admin SW v5] Cache match error:', error.message);
+    console.warn('[Admin SW v6] Cache match error:', error.message);
     return null;
   }
 }
@@ -150,18 +160,18 @@ async function safeCachePut(cacheName, request, response) {
     ]);
   } catch (error) {
     // Silently fail - never block on cache writes
-    console.warn('[Admin SW v5] Cache put failed (non-critical):', error.message);
+    console.warn('[Admin SW v6] Cache put failed (non-critical):', error.message);
   }
 }
 
-// Fetch - Optimized for navigation performance
+// Fetch - Optimized for navigation performance with auth awareness
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Validate scope - this SW should ONLY see /admin routes
   if (!url.pathname.startsWith('/admin')) {
-    console.error('[Admin SW v5] ERROR: Received non-admin request:', url.pathname);
+    console.error('[Admin SW v6] ERROR: Received non-admin request:', url.pathname);
     return;
   }
 
@@ -174,6 +184,14 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extensions and cross-origin requests
   if (url.origin !== self.location.origin) return;
 
+  // CRITICAL: NEVER cache auth-related routes - always bypass to network
+  const requestUrl = request.url;
+  if (NEVER_CACHE_PATTERNS.some(pattern => requestUrl.includes(pattern))) {
+    console.log('[Admin SW v6] Auth route detected, bypassing cache:', url.pathname);
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Skip Next.js internals and HMR
   if (
     url.pathname.startsWith('/_next/webpack-hmr') ||
@@ -183,7 +201,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NAVIGATION - NetworkFirst with 3s timeout
+  // NAVIGATION - NetworkFirst with ZERO cache fallback for admin HTML
+  // Always hit network for admin navigation to ensure auth middleware runs
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -196,22 +215,20 @@ self.addEventListener('fetch', (event) => {
           
           const response = await Promise.race([networkPromise, timeoutPromise]);
           
-          // Cache successful navigation responses (non-blocking)
-          if (response.ok) {
-            safeCachePut(RUNTIME_CACHE, request, response.clone());
-          }
+          // CRITICAL: Do NOT cache admin navigation HTML
+          // This ensures every navigation goes through server auth checks
+          console.log('[Admin SW v6] Admin navigation response:', response.status, url.pathname);
           
           return response;
         } catch (error) {
-          console.log('[Admin SW v5] Navigation offline, serving fallback');
+          console.log('[Admin SW v6] Navigation offline, serving fallback');
           
-          // Try cached version
+          // Only serve cached version if offline - never for auth reasons
           const cached = await safeCacheMatch(request, RUNTIME_CACHE);
-          if (cached) return cached;
-          
-          // Serve offline page
-          const offlinePage = await safeCacheMatch(OFFLINE_FALLBACK, STATIC_CACHE);
-          if (offlinePage) return offlinePage;
+          if (cached) {
+            console.log('[Admin SW v6] Serving cached admin page (offline mode)');
+            return cached;
+          }
           
           // Final fallback
           return new Response(
@@ -336,15 +353,9 @@ self.addEventListener('fetch', (event) => {
           
           const response = await Promise.race([networkPromise, timeoutPromise]);
           
-          if (response.ok) {
-            safeCachePut(RUNTIME_CACHE, request, response.clone());
-          }
-          
+          // Don't cache API responses for admin
           return response;
         } catch (error) {
-          const cached = await safeCacheMatch(request, RUNTIME_CACHE);
-          if (cached) return cached;
-          
           return new Response(
             JSON.stringify({ error: 'Offline', offline: true }),
             { 
@@ -380,6 +391,25 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  // Handle cache clear request from app after login
+  if (event.data?.type === 'CLEAR_ADMIN_CACHE') {
+    console.log('[Admin SW v6] Clearing admin HTML cache after login');
+    caches.open(RUNTIME_CACHE).then(cache => {
+      cache.keys().then(requests => {
+        requests.forEach(request => {
+          const url = new URL(request.url);
+          // Delete cached admin HTML pages
+          if (url.pathname.startsWith('/admin') && request.mode === 'navigate') {
+            cache.delete(request);
+            console.log('[Admin SW v6] Deleted cached admin page:', url.pathname);
+          }
+        });
+      });
+    }).catch(err => {
+      console.warn('[Admin SW v6] Cache clear error:', err);
+    });
+  }
 });
 
-console.log('[Admin SW v5] Loaded - Non-blocking, cache-safe');
+console.log('[Admin SW v6] Loaded - Auth-aware, non-blocking, cache-safe');

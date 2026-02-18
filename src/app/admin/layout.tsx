@@ -46,6 +46,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => {
     checkAuth()
+    
+    // Client-side auth check on mount - three-layer defense
+    const verifyAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          console.log('[Admin Layout] No session found on mount, staying on login page')
+        }
+      } catch (error) {
+        console.error('[Admin Layout] Auth verification error:', error)
+      }
+    }
+    
+    verifyAuth()
   }, [])
 
   // Close sidebar on route change (mobile)
@@ -133,6 +147,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         if (userData?.is_admin) {
           setUser(data.user)
           setIsAuthenticated(true)
+          
+          // CRITICAL: Clear service worker cache after successful login
+          // This ensures next navigation fetches fresh authenticated content
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            console.log('[Admin Layout] Clearing admin cache after login')
+            navigator.serviceWorker.controller.postMessage({ 
+              type: 'CLEAR_ADMIN_CACHE' 
+            })
+          }
         } else {
           await supabase.auth.signOut()
           setLoginError('Access denied. Admin privileges required.')
@@ -147,6 +170,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     await supabase.auth.signOut()
     setUser(null)
     setIsAuthenticated(false)
+    
+    // Clear service worker cache on logout
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      console.log('[Admin Layout] Clearing admin cache after logout')
+      navigator.serviceWorker.controller.postMessage({ 
+        type: 'CLEAR_ADMIN_CACHE' 
+      })
+    }
+    
     router.push('/')
   }
 
